@@ -1,0 +1,33 @@
+//
+//  LePats-Prefix.pch
+//  LePats
+//
+//  Created by 夏钟林 on 3/7/13.
+//  Copyright (c) 2015年 admin. All rights reserved.
+//
+
+#import <Availability.h>
+
+#ifndef __IPHONE_3_0
+#warning "This project uses features only available in iOS SDK 3.0 and later."
+#endif
+
+
+#ifdef __OBJC__
+
+#import <UIKit/UIKit.h>
+#import <Foundation/Foundation.h>
+#import "PubDefine.h"
+#import "UtilsMacro.h"
+#import "PubNotification.h"
+#import "Common.h"
+
+
+
+#define kXCarPort  7878
+#define kXCarAddress "192.168.42.1"
+#define XCLocalized(x) NSLocalizedString(x, "")
+
+#define XCFONT(x) [UIFont fontWithName:@"Helvetica" size:x]
+
+#endif
