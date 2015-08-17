@@ -20,10 +20,12 @@
     FileSocket *fileSocket;
     DownCell *_downCell;
     NSMutableDictionary *dicDelete;
+    NSInteger nTag;
 }
 
 @property (nonatomic,assign) BOOL bDownloading;
-//@property (nonatomic,strong) 
+//@property (nonatomic,strong)
+@property (nonatomic,strong) UILabel *lblContent;
 @property (nonatomic,strong) UITableView *tableView;
 @property (nonatomic,strong) NSMutableArray *array;
 @end
@@ -67,19 +69,63 @@
     [btnRight addTarget:self action:@selector(rightClick) forControlEvents:UIControlEventTouchUpInside];
     [self setRightBtn:btnRight];
     
+    UIButton *btnCom = [UIButton buttonWithType:UIButtonTypeCustom];
+    [btnCom setTitle:@"Common" forState:UIControlStateNormal];
+    [btnCom setBackgroundColor:RGB(0, 188, 77)];
+    [self.view addSubview:btnCom];
+    [btnCom setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
+    btnCom.titleLabel.font = XCFONT(13);
+    
+    UIButton *btnAlarm = [UIButton buttonWithType:UIButtonTypeCustom];
+    [btnAlarm setTitle:@"Emegnecy" forState:UIControlStateNormal];
+    [btnAlarm setBackgroundColor:RGB(0, 188, 77)];
+    [self.view addSubview:btnAlarm];
+    [btnAlarm setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
+    btnAlarm.titleLabel.font = XCFONT(13);
+    
+    btnCom.frame = Rect(0, 64, kScreenSourchWidth/2,44);
+    btnAlarm.frame = Rect(kScreenSourchWidth/2, 64, kScreenSourchWidth/2, 44);
+    [btnCom addTarget:self action:@selector(touchEvent:) forControlEvents:UIControlEventTouchUpInside];
+    [btnAlarm addTarget:self action:@selector(touchEvent:) forControlEvents:UIControlEventTouchUpInside];
+    btnCom.tag = 10001;
+    btnAlarm.tag = 10002;
+    nTag = 10001;
+    
+    _lblContent = [[UILabel alloc] initWithFrame:Rect(1, 40, kScreenSourchWidth/2-1,4)];
+    [_lblContent setBackgroundColor:[UIColor whiteColor]];
+    [btnCom addSubview:_lblContent];
+    
     [self setTitleText:@"Recording Files"];
-    _tableView = [[UITableView alloc] initWithFrame:Rect(0, 64, kScreenAppWidth, kScreenSourchHeight-64)];
+    _tableView = [[UITableView alloc] initWithFrame:Rect(0, 113, kScreenAppWidth, kScreenSourchHeight-113)];
     [self.view addSubview:_tableView];
     _tableView.delegate = self;
     _tableView.dataSource = self;
     [_tableView setSeparatorStyle:UITableViewCellSeparatorStyleNone];
 }
 
+-(void)touchEvent:(UIButton *)btn
+{
+    [btn addSubview:_lblContent];
+    
+    nTag = btn.tag;
+    
+    if (btn.tag==10001)
+    {
+        [self initData];
+    }
+    else
+    {
+        [self initAlarm];
+    }
+}
+
 - (void)viewDidLoad
 {
     [super viewDidLoad];
+    nTag = 10001;
     _array = [NSMutableArray array];
     dicDelete = [NSMutableDictionary dictionary];
+    [self.view setBackgroundColor:RGB(246, 246, 246)];
     [self initBodyView];
     // Do any additional setup after loading the view.
 }
@@ -92,11 +138,41 @@
 -(void)viewDidAppear:(BOOL)animated
 {
     [super viewDidAppear:animated];
-    [self initData];
+    if (nTag)
+    {
+        [self initData];
+    }
+    else
+    {
+        [self initAlarm];
+    }
+}
+
+-(void)initAlarm
+{
+    [_array removeAllObjects];
+    [self updateView];
+    __weak DownRecordViewController *__self =self;
+    dispatch_async(dispatch_get_global_queue(0, 0),
+   ^{
+       MyBSDSocket *bsdSocket = [MyBSDSocket sharedMyBSDSocket];
+       NSData *data = [bsdSocket getAlarmRecordInfo];
+       if (data==nil)
+       {
+           dispatch_async(dispatch_get_main_queue(), ^{
+               [__self.view makeToast:@"No record"];
+               [__self.tableView reloadData];
+           });
+           return ;
+       }
+       [__self comRecord:data];
+   });
 }
 
 -(void)initData
 {
+    [_array removeAllObjects];
+    [self updateView];
     __weak DownRecordViewController *__self =self;
     dispatch_async(dispatch_get_global_queue(0, 0),
    ^{
@@ -104,6 +180,11 @@
        NSData *data = [bsdSocket getComRecordInfo];
        if (data==nil)
        {
+           dispatch_async(dispatch_get_main_queue(),
+           ^{
+               [__self.view makeToast:@"No record"];
+               [__self.tableView reloadData];
+           });
            return ;
        }
        [__self comRecord:data];
@@ -119,13 +200,10 @@
         return ;
     }
     NSArray *array = [weatherDic objectForKey:@"listing"];
-//    DLog(@"array:%@",array);
     [_array removeAllObjects];
     for(int i=0;i<array.count;i++)
     {
-//        NSString *strItem = array[i];
         NSDictionary *song = [array objectAtIndex:i];
-//        NSLog(@"song info: %@----%@\t\n",song.allKeys[0],song.allValues[0]);
         
         RecordModel *record = [[RecordModel alloc] initWithItem:song];
         
@@ -156,7 +234,6 @@
     {
         cell = [[DownCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:strDownRecordIdentify];
     }
-//    cell.selectionStyle = UITableViewCellSelectionStyleNone;
     RecordModel *record = [_array objectAtIndex:indexPath.row];
     record.nId = indexPath.row;
     if (record)
@@ -207,16 +284,19 @@
         [self.view makeToast:@"正在下载" duration:1.5 position:@"center"];
         return;
     }
-    _bDownloading = YES;
     _downCell = cellInfo;
     DLog(@" _downCell.recordInfo.strName:%@", _downCell.recordInfo.strName);
-   
     MyBSDSocket *bsdSocket = [MyBSDSocket sharedMyBSDSocket];
-    _downCell.lblPercent.hidden = NO;
-    [_downCell.lblPercent setText:@"开始下载"];
     if([bsdSocket downloadFile:record.strName])
     {
         [self downloadInfo:record.strName size:record.nAll];
+        _bDownloading = YES;
+        [_downCell.lblPercent setText:@"开始下载"];
+        _downCell.lblPercent.hidden = NO;
+    }
+    else
+    {
+        [self.view makeToast:@"download failed"];
     }
 }
 

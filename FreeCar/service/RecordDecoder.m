@@ -12,6 +12,37 @@
 #import "DecoderPublic.h"
 #define kLibraryPath  [NSSearchPathForDirectoriesInDomains(NSLibraryDirectory, NSUserDomainMask, YES) objectAtIndex:0]
 
+static void avStreamFPSTimeBase(AVStream *st, CGFloat defaultTimeBase, CGFloat *pFPS, CGFloat *pTimeBase)
+{
+    CGFloat fps, timebase;
+    
+    if (st->time_base.den && st->time_base.num)
+        timebase = av_q2d(st->time_base);
+    else if(st->codec->time_base.den && st->codec->time_base.num)
+        timebase = av_q2d(st->codec->time_base);
+    else
+        timebase = defaultTimeBase;
+    
+    if (st->codec->ticks_per_frame != 1) {
+        NSLog(@"WARNING: st.codec.ticks_per_frame=%d", st->codec->ticks_per_frame);
+        //timebase *= st->codec->ticks_per_frame;
+    }
+    
+    if (st->avg_frame_rate.den && st->avg_frame_rate.num)
+        fps = av_q2d(st->avg_frame_rate);
+    else if (st->r_frame_rate.den && st->r_frame_rate.num)
+        fps = av_q2d(st->r_frame_rate);
+    else
+        fps = 1.0 / timebase;
+    
+    if (pFPS)
+        *pFPS = fps;
+    if (pTimeBase)
+        *pTimeBase = timebase;
+}
+
+
+
 @interface RecordDecoder()
 {
     AVCodecContext *pCodecCtx;
@@ -24,6 +55,7 @@
     int _videoStream;
     NSFileHandle *fileHandle;
     NSMutableData *data;
+    CGFloat _videoTimeBase;
 }
 @property (nonatomic,copy) NSString *strRtsp;
 
@@ -34,6 +66,7 @@
 -(void)dealloc
 {
     [self closeScaler];
+    
     avcodec_free_frame(&pFrame);
     
     avcodec_close(pCodecCtx);
@@ -85,6 +118,7 @@
     av_register_all();
     avcodec_register_all();
     _strRtsp = strPath;
+    _nSecond = 0;
     _bEnd = NO;
     [self connectRtsp];
     return self;
@@ -94,7 +128,6 @@
 {
     ///var/mobile/Containers/Data/Application/B1AA65BD-90B7-44C4-AF0A-63103B275320/Library/record/08061712_0007.MP4
     NSString *strPath = [NSString stringWithFormat:@"%@/record/%@",kLibraryPath,_strRtsp];
-//    avformat_network_init();
     if(avformat_open_input(&pFormatCtx,[strPath UTF8String], NULL, NULL)!=0)
     {
         DLog(@"连接失败");
@@ -130,7 +163,14 @@
         return NO;
     }
     pFrame = avcodec_alloc_frame();
-    _fps = 25;
+    
+    AVStream *st = pFormatCtx->streams[_videoStream];
+    avStreamFPSTimeBase(st, 0.04, &_fps, &_videoTimeBase);
+    
+    _nSecond = (int)pFormatCtx->streams[_videoStream]->duration*pFormatCtx->streams[_videoStream]->time_base.num/pFormatCtx->streams[_videoStream]->time_base.den;
+    
+    DLog(@"seconds:%d---%f",_nSecond,_fps);
+    
     return YES;
 }
 
@@ -138,21 +178,21 @@
 {
     int gotframe;
     AVPacket packet;
-    av_init_packet(&packet);
-    NSMutableArray *result = [[NSMutableArray alloc] init];
+    NSMutableArray *result = [NSMutableArray array];
     BOOL bFinish = NO;
-    int nRef = 0;
-    CGFloat minDuration = 0;
+    CGFloat minDuration = 0.1;
     CGFloat decodedDuration = 0;
     while (!bFinish)
     {
-        nRef = av_read_frame(pFormatCtx, &packet);
-        if (nRef == -1) {
-            _bEnd = YES;
+        if (av_read_frame(pFormatCtx, &packet) < 0)
+        {
+            _isEOF = YES;
             break;
         }
-        else if(nRef>=0 && packet.stream_index == _videoStream)
+//        DLog(@"packet:%d",packet.size);
+        if(packet.stream_index == _videoStream)
         {
+            int pktSize = packet.size;
             int len = avcodec_decode_video2(pCodecCtx,pFrame,&gotframe,&packet);
             if (gotframe)
             {
@@ -160,21 +200,19 @@
                 if (frameVideo)
                 {
                     [result addObject:frameVideo];
-                    bFinish = YES;
+                    _position = frameVideo.position;
                     decodedDuration += frameVideo.duration;
-                    if (decodedDuration > minDuration)
-                    {
-                        bFinish = YES;
-                    }
+                    bFinish = YES;
                 }
                 frameVideo = nil;
             }
             if (0 == len || -1 == len)
             {
-                av_free_packet(&packet);
-                break;
+                continue;
             }
+            pktSize -= len;
         }
+        av_free_packet(&packet);
     }
     av_free_packet(&packet);
     return result;
@@ -210,7 +248,19 @@
     frame.width = pCodecCtx->width;
     frame.height = pCodecCtx->height;
     
-    frame.duration = 1.0 / 25;
+    frame.position = av_frame_get_best_effort_timestamp(pFrame) * _videoTimeBase;
+    
+    const int64_t frameDuration = av_frame_get_pkt_duration(pFrame);
+    
+    if (frameDuration)
+    {
+        frame.duration = frameDuration * _videoTimeBase;
+        frame.duration += pFrame->repeat_pict * _videoTimeBase * 0.5;
+    }
+    else
+    {
+        frame.duration = 1.0 / _fps;
+    }
     return frame;
 }
 
@@ -240,14 +290,39 @@
 #pragma mark 关闭转换
 - (void) closeScaler
 {
-    if (_swsContext) {
+    DLog(@"释放scaler");
+    if (_swsContext)
+    {
         sws_freeContext(_swsContext);
         _swsContext = NULL;
     }
     
-    if (_pictureValid) {
+    if (_pictureValid)
+    {
         avpicture_free(&_picture);
         _pictureValid = NO;
     }
 }
+
+
+- (CGFloat) duration
+{
+    if (!pFormatCtx)
+        return 0;
+    if (pFormatCtx->duration == AV_NOPTS_VALUE)
+        return MAXFLOAT;
+    return (CGFloat)pFormatCtx->duration / AV_TIME_BASE;
+}
+
+#pragma mark 快进控制
+- (void) setPosition: (CGFloat)seconds
+{
+    _position = seconds;
+    _isEOF = NO;
+    if (_videoStream != -1)
+    {
+        av_seek_frame(pFormatCtx, -1, _position*AV_TIME_BASE, AVSEEK_FLAG_ANY);
+    }
+}
+
 @end

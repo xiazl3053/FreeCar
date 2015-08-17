@@ -18,15 +18,14 @@ DEFINE_SINGLETON_FOR_HEADER(MyBSDSocket);
 
 -(int)connect:(const char *)ip port:(int)nPort;
 
--(NSData*)reciveMessage;
-
 -(BOOL)startSession;
 -(BOOL)connectMedia;
 -(int)XzlConnect;
 
 
 -(NSData*)getComRecordInfo;
--(void)getAlarmRecordInfo;
+
+-(NSData*)getAlarmRecordInfo;
 
 -(BOOL)downloadFile:(NSString*)strName;
 
@@ -47,5 +46,13 @@ DEFINE_SINGLETON_FOR_HEADER(MyBSDSocket);
 -(void)closeSocket;
 
 -(void)stopRecord;
+
+-(NSString *)getStamp;
+
+-(BOOL)formatSdCard;
+
+-(NSString*)getResolution;
+
+-(BOOL)setResolution:(NSString *)strResolution;
 
 @end

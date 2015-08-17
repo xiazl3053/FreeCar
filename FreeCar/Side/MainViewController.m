@@ -71,14 +71,16 @@
 //    _btnPlay = btnTest;
     
 //    _btnPlay.frame = Rect(, <#y#>, 61.5, 61.5);
+    
 }
 
 -(void)viewDidAppear:(BOOL)animated
 {
     [super viewDidAppear:animated];
+    _bPlaying = YES;
+    _bDecoding = NO;
     _imgView.frame = Rect(0, kScreenSourchHeight/2-kScreenSourchWidth/2, kScreenSourchWidth,kScreenSourchWidth);
     __weak MainViewController *__self = self;
-    
     dispatch_async(dispatch_get_global_queue(0, 0),
     ^{
        [__self connectRealPlay];
@@ -98,6 +100,8 @@
 -(void)viewWillDisappear:(BOOL)animated
 {
     [super viewWillDisappear:animated];
+    _bPlaying = NO;
+    _bDecoding = YES;
     __weak MainViewController *__self = self;
     dispatch_async(dispatch_get_global_queue(0, 0), ^{
         [__self stopPlay];
@@ -119,8 +123,6 @@
                 return ;
             }
         }
-        _bPlaying = YES;
-        _bDecoding = NO;
         __weak MainViewController *__self = self;
         dispatch_async(dispatch_get_global_queue(0, 0), ^{
             [__self startPlay];

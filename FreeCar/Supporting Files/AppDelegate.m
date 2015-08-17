@@ -22,13 +22,6 @@
 
 @implementation AppDelegate
 
--(void)showLeftView:(UIViewController *)viewCOntrol
-{
-    if (_slide)
-    {
-        [_slide showLeft:viewCOntrol];
-    }
-}
 
 -(void)showLeft
 {
@@ -47,6 +40,7 @@
     WWSideslipViewController * slide = [[WWSideslipViewController alloc]initWithLeftView:left andMainView:index andRightView:nil andBackgroundImage:nil];
     _slide=slide;
     //滑动速度系数
+    sleep(2);
     [slide setSpeedf:0.5];
     //点击视图是是否恢复位置
     slide.sideslipTapGes.enabled = YES;

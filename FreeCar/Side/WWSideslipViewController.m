@@ -192,16 +192,6 @@
 //恢复位置
 -(void)showMainView
 {
-//    if (otherControl)
-//    {
-//        [UIView beginAnimations:nil context:nil];
-//        otherControl.view.transform = CGAffineTransformScale(CGAffineTransformIdentity,1.0,1.0);
-//        otherControl.view.center = CGPointMake([UIScreen mainScreen].bounds.size.width/2,[UIScreen mainScreen].bounds.size.height/2);
-//        [UIView commitAnimations];
-//        otherControl = nil;
-//    }
-//    else
-//    {
         [UIView beginAnimations:nil context:nil];
         mainControl.view.transform = CGAffineTransformScale(CGAffineTransformIdentity,1.0,1.0);
         mainControl.view.center = CGPointMake([UIScreen mainScreen].bounds.size.width/2,[UIScreen mainScreen].bounds.size.height/2);
@@ -209,28 +199,6 @@
     
         [clearView removeFromSuperview];
         [mainControl.view removeGestureRecognizer:sideslipTapGes];
-    
-//    }
-}
-
--(void)showLeft:(UIViewController *)viewController
-{
-    if (otherControl==nil)
-    {
-        [UIView beginAnimations:nil context:nil];
-        viewController.view.transform = CGAffineTransformScale(CGAffineTransformIdentity,0.9,0.9);
-        viewController.view.center = CGPointMake(400,[UIScreen mainScreen].bounds.size.height/2);
-        [UIView commitAnimations];
-        otherControl = viewController;
-    }
-    else
-    {
-        [UIView beginAnimations:nil context:nil];
-        otherControl.view.transform = CGAffineTransformScale(CGAffineTransformIdentity,1.0,1.0);
-        otherControl.view.center = CGPointMake([UIScreen mainScreen].bounds.size.width/2,[UIScreen mainScreen].bounds.size.height/2);
-        [UIView commitAnimations];
-        otherControl = nil;
-    }
 }
 
 //显示左视图
@@ -238,7 +206,7 @@
 {
     [UIView beginAnimations:nil context:nil];
     mainControl.view.transform = CGAffineTransformScale(CGAffineTransformIdentity,0.9,0.9);
-    mainControl.view.center = CGPointMake(400,[UIScreen mainScreen].bounds.size.height/2);
+    mainControl.view.center = CGPointMake(kScreenSourchWidth*1.2,[UIScreen mainScreen].bounds.size.height/2);
     [UIView commitAnimations];
     
     [mainControl.view addSubview:clearView];

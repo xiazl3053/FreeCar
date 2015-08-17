@@ -125,16 +125,15 @@
 {
     int gotframe;
     AVPacket packet;
-    av_init_packet(&packet);
     NSMutableArray *result = [[NSMutableArray alloc] init];
     BOOL bFinish = NO;
     int nRef = 0;
     CGFloat minDuration = 0;
     CGFloat decodedDuration = 0;
+    av_init_packet(&packet);
     while (!bFinish)
     {
         nRef = av_read_frame(pFormatCtx, &packet);
-//        DLog(@"pakcet.size:%d",packet.size);
         if(nRef>=0 && packet.stream_index == _videoStream)
         {
             int len = avcodec_decode_video2(pCodecCtx,pFrame,&gotframe,&packet);

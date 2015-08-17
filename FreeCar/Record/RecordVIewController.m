@@ -7,6 +7,8 @@
 //
 
 #import "RecordVIewController.h"
+#import <MediaPlayer/MPMoviePlayerController.h>
+#import <AVFoundation/AVFoundation.h>
 #import "DownCell.h"
 #import "RecordDBService.h"
 #import "RecordModel.h"
@@ -129,6 +131,17 @@
         [cell setRecordInfo:record];
     }
     [cell setRecordViewStyle];
+    __block NSString *__strPath = record.strName;
+    __weak DownCell *__cell = cell;
+    dispatch_async(dispatch_get_global_queue(0, 0),
+    ^{
+        NSString *strInfo = [NSString stringWithFormat:@"%@/record/%@",kLibraryPath,__strPath];
+        UIImage *image = [RecordViewController getImage:strInfo];
+        dispatch_async(dispatch_get_main_queue(),
+        ^{
+            __cell.imgView.image = image;
+        });
+    });
 
     return cell;
 }
@@ -159,6 +172,29 @@
         PlayViewController *playView = [[PlayViewController alloc] initWithModel:record];
         [[[[UIApplication sharedApplication]keyWindow] rootViewController] presentViewController:playView animated:YES completion:nil];
     }
+}
+
++(UIImage *)getImage:(NSString *)videoURL
+{
+    AVURLAsset *asset = [[AVURLAsset alloc] initWithURL:[NSURL fileURLWithPath:videoURL] options:nil];
+    
+    AVAssetImageGenerator *gen = [[AVAssetImageGenerator alloc] initWithAsset:asset];
+    
+    gen.appliesPreferredTrackTransform = YES;
+    
+    CMTime time = CMTimeMakeWithSeconds(0.0, 600);
+    
+    NSError *error = nil;
+    
+    CMTime actualTime;
+    
+    CGImageRef image = [gen copyCGImageAtTime:time actualTime:&actualTime error:&error];
+    
+    UIImage *thumb = [[UIImage alloc] initWithCGImage:image];
+    
+    CGImageRelease(image);
+    
+    return thumb;
 }
 
 
