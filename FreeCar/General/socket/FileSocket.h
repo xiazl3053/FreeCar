@@ -22,8 +22,7 @@ typedef void(^RecordDownloadFile)(int nStatus);
 @property (nonatomic,copy) RecordDownloadFile recordBlock;
 
 -(void)initSockInfo:(int)nAll name:(NSString *)strName;
-//-(id)initWithInfo:(int)nAll file:(NSString *)strFile;
 
-//-(void)initSockInfo;
+-(void)closeSocket;
 
 @end

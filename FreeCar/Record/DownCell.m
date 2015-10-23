@@ -83,13 +83,10 @@
     [_btnDown setImage:[UIImage imageNamed:@"btn_down_high"] forState:UIControlStateHighlighted];
     [_btnDown addTarget:self action:@selector(downloadFile) forControlEvents:UIControlEventTouchUpInside];
     
-//    [self addViewLine];
-    
     _lblPercent = [[UILabel alloc] initWithFrame:Rect(kScreenSourchWidth-80,_lblSize.y,60,15)];
     [_lblPercent setFont:XCFONT(12)];
     [_lblPercent setTextColor:[UIColor redColor]];
     [self.contentView addSubview:_lblPercent];
-    _lblPercent.hidden = YES;
 }
 
 -(void)layoutSubviews
@@ -101,15 +98,15 @@
 
 -(void)downloadFile
 {
-    if (_delegate && [_delegate respondsToSelector:@selector(clickDownload: cell:)])
+    if (_delegate && [_delegate respondsToSelector:@selector(clickDownload:)])
     {
-        [_delegate clickDownload:_recordInfo cell:self];
+        [_delegate clickDownload:_recordInfo];
     }
 }
 
 - (void)awakeFromNib
 {
-    // Initialization code
+    
 }
 
 - (void)setSelected:(BOOL)selected animated:(BOOL)animated {
@@ -131,6 +128,5 @@
     [self.contentView addSubview:sLine1];
     [self.contentView addSubview:sLine2];
 }
-
 
 @end

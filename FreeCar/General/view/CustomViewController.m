@@ -62,6 +62,10 @@
     [_headView addSubview:_btnRight];
 }
 
+-(void)setHeadViewHidden:(BOOL)bFlag
+{
+    _headView.hidden = bFlag;
+}
 
 /*
 #pragma mark - Navigation

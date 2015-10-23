@@ -42,7 +42,6 @@
     [self addChildViewController:settingControl];
     
     tempControl = mainViewControl;
-    
     [self showMainView];
 }
 

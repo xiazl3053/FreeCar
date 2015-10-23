@@ -54,6 +54,7 @@
 		4D547BF81B799CF10058213C /* AVFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4D547BF71B799CF10058213C /* AVFoundation.framework */; };
 		4D547BFA1B799CF60058213C /* CoreMedia.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4D547BF91B799CF60058213C /* CoreMedia.framework */; };
 		4D547BFC1B79C2D10058213C /* MediaPlayer.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4D547BFB1B79C2D10058213C /* MediaPlayer.framework */; };
+		4DA1E5C41BD75B590026D0D4 /* RtspViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 4DA1E5C31BD75B590026D0D4 /* RtspViewController.m */; };
 		4DAAC3CC1B7086DB00CB2F79 /* RecordDBService.m in Sources */ = {isa = PBXBuildFile; fileRef = 4DAAC3CB1B7086DB00CB2F79 /* RecordDBService.m */; };
 		4DAAC3DC1B7140EB00CB2F79 /* AccelerationAnimation.m in Sources */ = {isa = PBXBuildFile; fileRef = 4DAAC3CF1B7140EB00CB2F79 /* AccelerationAnimation.m */; };
 		4DAAC3DD1B7140EB00CB2F79 /* Evaluate.m in Sources */ = {isa = PBXBuildFile; fileRef = 4DAAC3D11B7140EB00CB2F79 /* Evaluate.m */; };
@@ -196,6 +197,8 @@
 		4D547BF71B799CF10058213C /* AVFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AVFoundation.framework; path = System/Library/Frameworks/AVFoundation.framework; sourceTree = SDKROOT; };
 		4D547BF91B799CF60058213C /* CoreMedia.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreMedia.framework; path = System/Library/Frameworks/CoreMedia.framework; sourceTree = SDKROOT; };
 		4D547BFB1B79C2D10058213C /* MediaPlayer.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MediaPlayer.framework; path = System/Library/Frameworks/MediaPlayer.framework; sourceTree = SDKROOT; };
+		4DA1E5C21BD75B590026D0D4 /* RtspViewController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = RtspViewController.h; sourceTree = "<group>"; };
+		4DA1E5C31BD75B590026D0D4 /* RtspViewController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = RtspViewController.m; sourceTree = "<group>"; };
 		4DAAC3CA1B7086DB00CB2F79 /* RecordDBService.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = RecordDBService.h; sourceTree = "<group>"; };
 		4DAAC3CB1B7086DB00CB2F79 /* RecordDBService.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = RecordDBService.m; sourceTree = "<group>"; };
 		4DAAC3CE1B7140EB00CB2F79 /* AccelerationAnimation.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AccelerationAnimation.h; sourceTree = "<group>"; };
@@ -594,6 +597,8 @@
 			children = (
 				4DEDDCF01B5E171200E72721 /* PlayViewController.h */,
 				4DEDDCF11B5E171200E72721 /* PlayViewController.m */,
+				4DA1E5C21BD75B590026D0D4 /* RtspViewController.h */,
+				4DA1E5C31BD75B590026D0D4 /* RtspViewController.m */,
 			);
 			path = play;
 			sourceTree = "<group>";
@@ -702,6 +707,7 @@
 				TargetAttributes = {
 					4D3A42031B46108B00648CB5 = {
 						CreatedOnToolsVersion = 6.3.1;
+						DevelopmentTeam = V773G65KWZ;
 					};
 					4D3A421C1B46108B00648CB5 = {
 						CreatedOnToolsVersion = 6.3.1;
@@ -815,6 +821,7 @@
 				4DAAC3E21B7140EB00CB2F79 /* UIWindow+RESideMenuExtensions.m in Sources */,
 				4D3A430C1B463E6200648CB5 /* UIScrollView+MJRefresh.m in Sources */,
 				4DEDDCF21B5E171200E72721 /* PlayViewController.m in Sources */,
+				4DA1E5C41BD75B590026D0D4 /* RtspViewController.m in Sources */,
 				4D3A43081B463E6200648CB5 /* MJRefreshHeader.m in Sources */,
 				4D3A425C1B461A9E00648CB5 /* RightViewController.m in Sources */,
 				4DEDDD311B6C60D900E72721 /* RecordVIewController.m in Sources */,
@@ -880,7 +887,7 @@
 				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
-				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
+				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer: QUAN SHAOJUN (Y3L39743PB)";
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -902,6 +909,7 @@
 				IPHONEOS_DEPLOYMENT_TARGET = 8.3;
 				MTL_ENABLE_DEBUG_INFO = YES;
 				ONLY_ACTIVE_ARCH = YES;
+				PROVISIONING_PROFILE = "44d3b61b-a2e0-4bea-9fdb-26d82092a00d";
 				SDKROOT = iphoneos;
 			};
 			name = Debug;
@@ -923,7 +931,7 @@
 				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
-				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
+				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Distribution: QUAN SHAOJUN (V773G65KWZ)";
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
@@ -938,6 +946,7 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 8.3;
 				MTL_ENABLE_DEBUG_INFO = NO;
+				PROVISIONING_PROFILE = "f1f4ad45-7460-4741-9ba6-350d8231c5ee";
 				SDKROOT = iphoneos;
 				VALIDATE_PRODUCT = YES;
 			};
@@ -948,6 +957,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_LAUNCHIMAGE_NAME = LaunchImage;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
 				GCC_PREFIX_HEADER = "${SRCROOT}/FreeCar/Supporting Files/FreeCar-Prefix.pch";
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
@@ -964,6 +974,8 @@
 					"$(PROJECT_DIR)/libs",
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE = "eda68367-0282-48a7-805d-ff9e35b3a256";
+				VALID_ARCHS = "arm64 armv7";
 			};
 			name = Debug;
 		};
@@ -972,6 +984,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_LAUNCHIMAGE_NAME = LaunchImage;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
 				GCC_PREFIX_HEADER = "${SRCROOT}/FreeCar/Supporting Files/FreeCar-Prefix.pch";
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
@@ -988,6 +1001,8 @@
 					"$(PROJECT_DIR)/libs",
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE = "eda68367-0282-48a7-805d-ff9e35b3a256";
+				VALID_ARCHS = "arm64 armv7";
 			};
 			name = Release;
 		};

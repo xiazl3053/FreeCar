@@ -31,7 +31,7 @@ DEFINE_SINGLETON_FOR_HEADER(MyBSDSocket);
 
 -(void)getDownDone;
 
--(BOOL)removeFromArray:(NSArray *)array;
+-(BOOL)removeFromArray:(NSArray *)array type:(int)nType;
 
 -(BOOL)settingTimeInfo:(NSString *)strTime type:(int)nType;
 
@@ -45,7 +45,7 @@ DEFINE_SINGLETON_FOR_HEADER(MyBSDSocket);
 
 -(void)closeSocket;
 
--(void)stopRecord;
+-(BOOL)stopRecord;
 
 -(NSString *)getStamp;
 
@@ -54,5 +54,9 @@ DEFINE_SINGLETON_FOR_HEADER(MyBSDSocket);
 -(NSString*)getResolution;
 
 -(BOOL)setResolution:(NSString *)strResolution;
+
+-(BOOL)setClock:(NSDate *)time;
+
+- (NSString *)getTimeInfo;
 
 @end

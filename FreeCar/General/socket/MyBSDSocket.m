@@ -1,6 +1,6 @@
 //
 //  MyBSDSocket.m
-//  xtefirovoad
+//  ;
 //
 //  Created by xia zhonglin on 9/20/11.
 //  Copyright 2011 __MyCompanyName__. All rights reserved.
@@ -84,26 +84,62 @@ DEFINE_SINGLETON_FOR_CLASS(MyBSDSocket);
         int nRef = 0;
         int nTemp = 0;
         char *buf = cData;
-        while ((nRef = (int)recv(nSockfd,buf+nTemp,10240,0))!=-1)
+        while ((nRef = (int)recv(nSockfd,buf+nTemp,512,0))>0)
         {
             nTemp += nRef;
-            DLog(@"cdata:%s",cData);
             if (cData[nTemp-1] == '}' && cData[nTemp] == '\0')
             {
-                DLog(@"收到");
+                DLog(@"收到:%s",cData);
+                break;
+            }
+        }
+        data = [NSData dataWithBytes:cData length:nTemp];
+        
+        NSDictionary *dict = [NSJSONSerialization JSONObjectWithData:data options:NSJSONReadingMutableLeaves error:nil];
+        
+        int nNumber = [[dict objectForKey:@"msg_id"] intValue];
+        
+        if (nNumber == nType)
+        {
+            break;
+        }
+        nCount++;
+        
+    }while (nCount<2);
+    
+    return data;
+}
+
+-(NSData*)reciveRecord
+{
+    NSData *data = nil;
+    int nCount = 0;
+    do
+    {
+        char cData[1024*50];
+        memset(cData, 0,1024*50);
+        int nRef = 0;
+        int nTemp = 0;
+        char *buf = cData;
+        while ((nRef = (int)recv(nSockfd,buf+nTemp,512,0))>0)
+        {
+            nTemp += nRef;
+            if (cData[nTemp-2]==']' && cData[nTemp-1] == '}' && cData[nTemp] == '\0')
+            {
+                DLog(@"收到:%s",cData);
                 break;
             }
         }
         data = [NSData dataWithBytes:cData length:nTemp];
         NSDictionary *dict = [NSJSONSerialization JSONObjectWithData:data options:NSJSONReadingMutableLeaves error:nil];
         int nNumber = [[dict objectForKey:@"msg_id"] intValue];
-        if (nNumber == nType)
+        if (nNumber == 1282)
         {
             break;
         }
-        DLog(@"again:%d",nType);
         nCount++;
     }while (nCount<2);
+    
     return data;
 }
 
@@ -119,7 +155,6 @@ DEFINE_SINGLETON_FOR_CLASS(MyBSDSocket);
     NSDictionary *weatherDic = [NSJSONSerialization JSONObjectWithData:data1 options:NSJSONReadingMutableLeaves error:&error];
     int nParam = [[weatherDic objectForKey:@"param"] intValue];
     _nParam = nParam;
-    
     return YES;
 }
 
@@ -161,7 +196,7 @@ DEFINE_SINGLETON_FOR_CLASS(MyBSDSocket);
     
     [self sendMessage:[NSData dataWithBytes:[strInfo UTF8String] length:strInfo.length]];
     
-    data = [self reciveMessage:1282];
+    data = [self reciveRecord];
     
     return data;
 }
@@ -199,55 +234,66 @@ DEFINE_SINGLETON_FOR_CLASS(MyBSDSocket);
     data = [NSData dataWithBytes:[strInfo UTF8String] length:strInfo.length];
     [self sendMessage:data];
     data = nil;
-    data = [self reciveMessage:1282];
-    
+    data = [self reciveRecord];
     return data;
 }
 
 -(BOOL)connectMedia
 {
-    if ([self XzlConnect])
+    if (nSockfd>0)
     {
-        NSString *strInfo = nil;
-        //1
-        NSData *data = nil;
+        if (_nParam>0)
+        {
+            
+        }
+        else
+        {
+            if (![self startSession])
+            {
+                return NO;
+            }
+        }
+    }
+    else
+    {
+        if ([self XzlConnect]<=0)
+        {
+            DLog(@"连接失败");
+            return NO;
+        }
         if (![self startSession])
         {
             return NO;
         }
-        int nParam = self.nParam;
-        
-        strInfo = [NSString stringWithFormat:@"{\"msg_id\" : 3,\"token\" : %d}",nParam];
-        
-        [self sendMessage:[NSData dataWithBytes:[strInfo UTF8String] length:strInfo.length]];
-        
-        [self reciveMessage:3];
-        
-        //3   {"msg_id" : 9,"param" : "stream_type","token" : 4}
-        strInfo = [NSString stringWithFormat:@"{\"msg_id\" : 9,\"param\" : \"stream_type\",\"token\" : %d}",nParam];
-        [self sendMessage:[NSData dataWithBytes:[strInfo UTF8String] length:strInfo.length]];
-        [self reciveMessage:9];
-        //4
-        strInfo = [NSString stringWithFormat:@"{\"msg_id\" : 9,\"param\" : \"stream_while_record\",\"token\" : %d}",nParam];
-        [self sendMessage:[NSData dataWithBytes:[strInfo UTF8String] length:strInfo.length]];
-        [self reciveMessage:9];
-        
-        strInfo = [NSString stringWithFormat:@"{\"msg_id\" : 2,\"param\" : \"on\",\"token\" : %d,\"type\" :\"stream_while_record\"}",nParam];
-        [self sendMessage:[NSData dataWithBytes:[strInfo UTF8String] length:strInfo.length]];
-        data = nil;
-        [self reciveMessage:2];
-        strInfo = nil;
-        
-        //6
-        strInfo = [NSString stringWithFormat:@"{\"msg_id\" : 259,\"param\" : \"none_force\",\"token\" : %d}",nParam];
-        data = [NSData dataWithBytes:[strInfo UTF8String] length:strInfo.length];
-        [self sendMessage:data];
-        data = nil;
-        [self reciveMessage:259];
-        strInfo = nil;
-        return YES;
     }
-    return NO;
+    NSString *strInfo = nil;
+    NSData *data = nil;
+    int nParam = self.nParam;
+    strInfo = [NSString stringWithFormat:@"{\"msg_id\" : 3,\"token\" : %d}",nParam];
+    [self sendMessage:[NSData dataWithBytes:[strInfo UTF8String] length:strInfo.length]];
+    [self reciveMessage:3];
+    //3   {"msg_id" : 9,"param" : "stream_type","token" : 4}
+    strInfo = [NSString stringWithFormat:@"{\"msg_id\" : 9,\"param\" : \"stream_type\",\"token\" : %d}",nParam];
+    [self sendMessage:[NSData dataWithBytes:[strInfo UTF8String] length:strInfo.length]];
+    [self reciveMessage:9];
+//        //4
+    strInfo = [NSString stringWithFormat:@"{\"msg_id\" : 9,\"param\" : \"stream_while_record\",\"token\" : %d}",nParam];
+    [self sendMessage:[NSData dataWithBytes:[strInfo UTF8String] length:strInfo.length]];
+    [self reciveMessage:9];
+    strInfo = [NSString stringWithFormat:@"{\"msg_id\" : 2,\"param\" : \"on\",\"token\" : %d,\"type\" :\"stream_while_record\"}",nParam];
+    [self sendMessage:[NSData dataWithBytes:[strInfo UTF8String] length:strInfo.length]];
+    data = nil;
+    [self reciveMessage:2];
+    strInfo = nil;
+    //6
+    strInfo = [NSString stringWithFormat:@"{\"msg_id\" : 259,\"param\" : \"none_force\",\"token\" : %d}",nParam];
+    data = [NSData dataWithBytes:[strInfo UTF8String] length:strInfo.length];
+    [self sendMessage:data];
+    data = nil;
+    [self reciveMessage:259];
+    strInfo = nil;
+    return YES;
+
 }
 
 
@@ -330,24 +376,38 @@ DEFINE_SINGLETON_FOR_CLASS(MyBSDSocket);
     [self reciveMessage:7];
 }
 
--(BOOL)removeFromArray:(NSArray *)array
+-(BOOL)removeFromArray:(NSArray *)array type:(int)nType
 {
     if([self getDeviceStatus]==0)
     {
         return  NO;
     }
+    NSString *strTemp = nil;
+    if (nType==1)
+    {
+        strTemp = @"/tmp/fuse_d/DCIM/100MEDIA/";
+    }
+    else
+    {
+        strTemp = @"/tmp/fuse_d/EVENT/";
+    }
     for (RecordModel *record in array)
     {
-        NSString *strInfo = [NSString stringWithFormat:@"{\"msg_id\" : 1281,\"token\" : %d,\"param\":\"/tmp/fuse_d/DCIM/100MEDIA/%s\"}",
-                             self.nParam,[record.strName UTF8String]];
+        NSString *strInfo = [NSString stringWithFormat:@"{\"msg_id\" : 1281,\"token\" : %d,\"param\":\"%s%s\"}",
+                    self.nParam,[strTemp UTF8String],[record.strName UTF8String]];
+        [self sendMessage:[NSData dataWithBytes:[strInfo UTF8String] length:strInfo.length]];
+        [self reciveMessage:1281];
+        DLog(@"删除record:%@",record.strName);
+
+        NSString *strName = [NSString stringWithFormat:@"%@_thm.MP4",[record.strName componentsSeparatedByString:@"."][0]];
+        strInfo = [[NSString alloc] initWithFormat:@"{\"msg_id\" : 1281,\"token\" : %d,\"param\":\"%s%s\"}",self.nParam,[strTemp UTF8String],
+                   [strName UTF8String]];
         [self sendMessage:[NSData dataWithBytes:[strInfo UTF8String] length:strInfo.length]];
         [self reciveMessage:1281];
         DLog(@"删除record:%@",record.strName);
     }
     return  YES;
 }
-
-
 
 -(BOOL)settingTimeInfo:(NSString *)strTime type:(int)nType
 {
@@ -388,14 +448,18 @@ DEFINE_SINGLETON_FOR_CLASS(MyBSDSocket);
 
 -(int)getFreeInfo
 {
-    if (self.nParam==0)
+    if (nSockfd==0)
     {
         if (![self XzlConnect])
         {
             return 0;
         }
+    }
+    if (_nParam==0)
+    {
         [self startSession];
     }
+    
     NSString *strInfo = [NSString stringWithFormat:@"{\"msg_id\" : 5,\"token\" : %d,\"type\" : \"free\"}",self.nParam];
     [self sendMessage:[NSData dataWithBytes:[strInfo UTF8String] length:strInfo.length]];
     NSData *data = [self reciveMessage:5];
@@ -409,12 +473,15 @@ DEFINE_SINGLETON_FOR_CLASS(MyBSDSocket);
 
 -(int)getTotalInfo
 {
-    if (self.nParam==0)
+    if (nSockfd==0)
     {
         if (![self XzlConnect])
         {
             return 0;
         }
+    }
+    if (_nParam==0)
+    {
         [self startSession];
     }
     NSString *strInfo = [NSString stringWithFormat:@"{\"msg_id\" : 5,\"token\" : %d,\"type\" : \"total\"}",self.nParam];
@@ -430,24 +497,36 @@ DEFINE_SINGLETON_FOR_CLASS(MyBSDSocket);
 
 -(int)getTimeSetting
 {
-    if ([self getDeviceStatus]==0)
+    if (nSockfd==0)
     {
-        return 0;
+        if (![self XzlConnect])
+        {
+            return 0;
+        }
     }
-//    NSString *strInfo = [NSString stringWithFormat:@""];
+    if (_nParam==0)
+    {
+        [self startSession];
+    }
     return 1;
 }
 
 #pragma mark 停止录像
--(void)stopRecord
+-(BOOL)stopRecord
 {
     NSString *strInfo = [NSString stringWithFormat:@"{\"msg_id\" : 514 ,\"token\":%d}",self.nParam];
     
     [self sendMessage:[NSData dataWithBytes:[strInfo UTF8String] length:strInfo.length]];
     
-    [self reciveMessage:514];
+    NSData *data = [self reciveMessage:514];
     
-    self.nParam = 0;
+    NSDictionary *dict = [NSJSONSerialization JSONObjectWithData:data options:NSJSONReadingMutableLeaves error:nil];
+    if (dict && [[dict objectForKey:@"rval"] intValue]==0 && [[dict objectForKey:@"msg_id"] intValue]==514)
+    {
+        DLog(@"停止录影");
+        return YES;
+    }
+    return NO;
 }
 
 -(void)stopSession
@@ -465,9 +544,14 @@ DEFINE_SINGLETON_FOR_CLASS(MyBSDSocket);
 -(void)closeSocket
 {
     DLog(@"关闭");
-    
+    if (_nParam==0)
+    {
+        return ;
+    }
+    NSString *strInfo = [NSString stringWithFormat:@"{\"token\": %d,\"msg_id\":258}",_nParam];
+    [self sendMessage:[[NSData alloc] initWithBytes:[strInfo UTF8String] length:strInfo.length]];
     close(nSockfd);
-    
+    nSockfd = 0;
     _nParam = 0;
 }
 
@@ -496,21 +580,62 @@ DEFINE_SINGLETON_FOR_CLASS(MyBSDSocket);
     return nil;
 }
 
+-(BOOL)formatSdCard_event
+{
+    int i=0;
+    do
+    {
+        if (nSockfd==0)
+        {
+            if (![self XzlConnect])
+            {
+                return 0;
+            }
+        }
+        if (_nParam==0)
+        {
+            [self startSession];
+        }
+//        if ([self getDeviceStatus]==0)
+//        {
+//            return NO;
+//        }
+        NSString *strInfo = [NSString stringWithFormat:@"{\"token\": %d, \"msg_id\": 4, \"param\":\"D:\"}",self.nParam];
+        
+        [self sendMessage:[NSData dataWithBytes:[strInfo UTF8String] length:strInfo.length]];
+        
+        NSData *data = [self reciveMessage:4];
+        
+        if (![self validateJson:data type:4])
+        {
+            DLog(@"AGAIN");
+        }
+        else
+        {
+            return YES;
+        }
+        i++;
+    }
+    while (i<2);
+    
+    return NO;
+}
+
 -(BOOL)formatSdCard
 {
-    if ([self getDeviceStatus]==0) {
-        return NO;
-    }
-    NSString *strInfo = [NSString stringWithFormat:@"{\"token\": %d, \"msg_id\": 4, \"param\":\"D:\"}",self.nParam];
-    
-    [self sendMessage:[NSData dataWithBytes:[strInfo UTF8String] length:strInfo.length]];
-    
-    NSData *data = [self reciveMessage:4];
-    
-    if (![self validateJson:data type:4])
+    if(![self formatSdCard_event])
     {
         return NO;
     }
+    [NSThread sleepForTimeInterval:3.5];
+    while (YES)
+    {
+        if([self stopRecord])
+        {
+            break;
+        }
+    }
+    
     return YES;
 }
 
@@ -570,6 +695,43 @@ DEFINE_SINGLETON_FOR_CLASS(MyBSDSocket);
         return NO;
     }
     return YES;
+}
+
+-(BOOL)setClock:(NSDate *)time
+{
+    NSDateFormatter *dateFormat = [[NSDateFormatter alloc] init];
+    [dateFormat setDateFormat:@"yyyy-MM-dd HH:mm:ss"];
+    NSString *strTime = [dateFormat stringFromDate:time];
+    if ([self getDeviceStatus]==0)
+    {
+        return NO;
+    }
+    NSString *strInfo = [NSString stringWithFormat:@"{\"token\": %d, \"msg_id\": 2,\"type\":\"camera_clock\",\"param\":\"%@\"}",self.nParam,strTime];
+    [self sendMessage:[NSData dataWithBytes:[strInfo UTF8String] length:strInfo.length]];
+    NSData *date = [self reciveMessage:2];
+    
+    if ([self validateJson:date type:2])
+    {
+        DLog(@"设置成功");
+        return YES;
+    }
+    return NO;
+}
+
+- (NSString *)getTimeInfo
+{
+    NSString *strInfo = [NSString stringWithFormat:@"{\"token\":%d,\"msg_id\": 1, \"type\": \"camera_clock\"}",self.nParam];
+    
+    [self sendMessage:[NSData dataWithBytes:[strInfo UTF8String] length:strInfo.length]];
+    NSData *data = [self reciveMessage:1];
+    
+    if ([self validateJson:data type:1])
+    {
+        DLog(@"设置成功");
+        NSDictionary *parameters = [NSJSONSerialization JSONObjectWithData:data options:NSJSONReadingMutableLeaves error:nil];
+        return [parameters objectForKey:@"param"];
+    }
+    return nil;
 }
 
 @end

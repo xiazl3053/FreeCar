@@ -8,12 +8,20 @@
 
 #import <Foundation/Foundation.h>
 
+typedef void(^RTSPDecodeBlock)(int nStatus);
+
 @interface RtspDecode : NSObject
 
 @property (nonatomic,assign) int fps;
 
+@property (nonatomic,copy) RTSPDecodeBlock rtspBlock;
+
+@property (nonatomic,assign) BOOL isEOF;
+
 -(id)initWithRtsp:(NSString *)strPath;
 
 -(NSArray *)decodeFrames;
+
+-(BOOL)connectRtsp;
 
 @end

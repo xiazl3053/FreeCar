@@ -20,6 +20,7 @@
 @property (nonatomic,copy) NSString *strDate;
 @property (nonatomic,copy) NSString *strSize;
 @property (nonatomic,copy) NSString *strName;
+@property (nonatomic,assign) int nType;
 
 
 @end

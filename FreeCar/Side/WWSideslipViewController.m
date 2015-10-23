@@ -19,6 +19,10 @@
     UIViewController *otherControl;
     UIView *clearView;
 }
+
+//@property (nonatomic,strong) NSString *strInfo1;
+//@property (nonatomic,strong) NSString *strInfo2;
+
 @end
 
 @implementation WWSideslipViewController
@@ -36,9 +40,7 @@
 - (void)viewDidLoad
 {
     [super viewDidLoad];
-    // Do any additional setup after loading the view.
     
-    //[self.view addSubview:mainControl.view];
     [self initParams];
 }
 
@@ -127,13 +129,12 @@
         sideslipTapGes= [[UITapGestureRecognizer alloc]initWithTarget:self action:@selector(showMainView)];
         [sideslipTapGes setNumberOfTapsRequired:1];
         
-//        [mainControl.view addGestureRecognizer:sideslipTapGes];
-        
         righControl.view.hidden = YES;
         
         clearView = [[UIView alloc] initWithFrame:mainControl.view.bounds];
         [clearView setBackgroundColor:[UIColor clearColor]];
-        
+//        [self addChildViewController:mainControl];
+//        [self addChildViewController:leftControl];
         
         [self.view addSubview:leftControl.view];
         [self.view addSubview:righControl.view];
@@ -211,8 +212,11 @@
     
     [mainControl.view addSubview:clearView];
     [mainControl.view addGestureRecognizer:sideslipTapGes];
+}
 
-    
+-(UIStatusBarStyle)preferredStatusBarStyle
+{
+    return UIStatusBarStyleLightContent;
 }
 
 @end

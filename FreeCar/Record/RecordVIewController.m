@@ -20,13 +20,115 @@
 @interface RecordViewController ()<UITableViewDataSource,UITableViewDelegate>
 {
     NSMutableDictionary *dicDelete;
+    UIButton *btnRight;
 }
+@property (nonatomic,strong) UIView *downView;
 @property (nonatomic,strong) NSMutableArray *arrayRecord;
 @property (nonatomic,strong) UITableView *tableView;
 
 @end
 
 @implementation RecordViewController
+
+
+-(void)initViewNew
+{
+    _downView = [[UIView alloc] initWithFrame:Rect(0, kScreenSourchHeight-50, kScreenSourchWidth, 50)];
+   
+    [self.view addSubview:_downView];
+    
+    _downView.backgroundColor = [UIColor whiteColor];
+    
+    UIButton *btnAll = [UIButton buttonWithType:UIButtonTypeCustom];
+    
+    [_downView addSubview:btnAll];
+    
+    btnAll.tag = 1;
+    
+    [btnAll setTitle:@"All" forState:UIControlStateNormal];
+    
+    [btnAll setTitle:@"Reselect" forState:UIControlStateSelected];
+    
+    [btnAll setTitleColor:XC_MAIN_COLOR forState:UIControlStateNormal];
+    
+    UIButton *btnDel = [UIButton buttonWithType:UIButtonTypeCustom];
+    
+    [btnDel setTitleColor:XC_MAIN_COLOR forState:UIControlStateNormal];
+    
+    [btnDel setTitle:@"delete" forState:UIControlStateNormal];
+    
+    [_downView addSubview:btnDel];
+    
+    btnAll.frame = Rect(0, 0, kScreenSourchWidth/2-1, 50);
+    
+    btnDel.frame = Rect(kScreenSourchWidth/2, 0, kScreenSourchWidth/2-1, 50);
+    
+    [btnAll addTarget:self action:@selector(selectDelAll:) forControlEvents:UIControlEventTouchUpInside];
+    
+    [btnDel addTarget:self action:@selector(delAll) forControlEvents:UIControlEventTouchUpInside];
+    
+    UILabel *lblContent = [[UILabel alloc] initWithFrame:Rect(0, 0, kScreenSourchWidth, 1)];
+    [lblContent setBackgroundColor:RGB(192.0,192,192)];
+    [_downView addSubview:lblContent];
+    
+    _downView.hidden = YES;
+    
+    lblContent = [[UILabel alloc] initWithFrame:Rect(kScreenSourchWidth/2-1, 0, 1, 50)];
+    [lblContent setBackgroundColor:RGB(192.0,192,192)];
+    
+    [_downView addSubview:lblContent];
+}
+
+-(void)selectDelAll:(UIButton *)btnSender
+{
+    if (btnSender.selected)
+    {
+        for (int i=0;i<_arrayRecord.count;i++)
+        {
+            NSIndexPath *indexPath = [NSIndexPath indexPathForRow:i inSection:0];
+            [_tableView deselectRowAtIndexPath:indexPath animated:NO];
+            [dicDelete removeObjectForKey:indexPath];
+        }
+    }
+    else
+    {
+        for (int i=0;i<_arrayRecord.count;i++)
+        {
+            NSIndexPath *indexPath = [NSIndexPath indexPathForRow:i inSection:0];
+            [_tableView selectRowAtIndexPath:indexPath animated:NO scrollPosition:UITableViewScrollPositionNone];
+            [dicDelete setObject:[_arrayRecord objectAtIndex:i] forKey:indexPath];
+        }
+    }
+    btnSender.selected = !btnSender.selected;
+}
+
+-(void)delAll
+{
+    __weak NSMutableDictionary *__dictDelete = dicDelete;
+    __weak NSMutableArray *__array = _arrayRecord;
+    __weak UITableView *__tableView = _tableView;
+    
+    _downView.hidden = YES;
+    __weak RecordViewController *__self = self;
+    [self.view makeToastActivity];
+    __weak UIButton *__btnRight = btnRight;
+    dispatch_async(dispatch_get_global_queue(0, 0),
+       ^{
+           [RecordDBService removeArray:[dicDelete allValues]];
+           [_arrayRecord removeObjectsInArray:[dicDelete allValues]];
+           [__array removeObjectsInArray:[__dictDelete allValues]];
+           dispatch_async(dispatch_get_main_queue(),
+                          ^{
+                              [__self.view hideToastActivity];
+                              [__tableView setEditing:NO animated:YES];
+                              [__tableView reloadData];
+                              btnRight.selected = NO;
+                          });
+       });
+}
+
+
+
 
 -(void)initHeadView
 {
@@ -39,6 +141,7 @@
     UIButton *btnRight  = [UIButton buttonWithType:UIButtonTypeCustom];
     [btnRight setImage:[UIImage imageNamed:@"btn_remove_normal"] forState:UIControlStateHighlighted];
     [btnRight setImage:[UIImage imageNamed:@"btn_remove_high"] forState:UIControlStateNormal];
+    [btnRight setImage:[UIImage imageNamed:@"OK_ICON"] forState:UIControlStateSelected];
     [btnRight addTarget:self action:@selector(rightClick) forControlEvents:UIControlEventTouchUpInside];
     [self setRightBtn:btnRight];
     
@@ -60,10 +163,15 @@
         [RecordDBService removeArray:[dicDelete allValues]];
         [_arrayRecord removeObjectsInArray:[dicDelete allValues]];
         [_tableView setEditing:NO animated:YES];
+        _downView.hidden = YES;
         [_tableView reloadData];
+        btnRight.selected = NO;
     }
     else
     {
+        btnRight.selected = YES;
+        _downView.hidden = NO;
+        ((UIButton*)[_downView viewWithTag:1]).selected=NO;
         [_tableView setEditing:YES animated:YES];
         [dicDelete removeAllObjects];
     }
@@ -81,6 +189,9 @@
     _arrayRecord = [NSMutableArray array];
     [self.view setBackgroundColor:RGB(255, 255, 255)];
     [self initHeadView];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(setLayout) name:MESSAGE_UPDATE_RECORD_VC object:nil];
+    
+    [self initViewNew];
 }
 
 -(void)viewDidAppear:(BOOL)animated
@@ -102,18 +213,9 @@
     [super didReceiveMemoryWarning];
 }
 
-/*
-#pragma mark - Navigation
-
-// In a storyboard-based application, you will often want to do a little preparation before navigation
-- (void)prepareForSegue:(UIStoryboardSegue *)segue sender:(id)sender {
-    // Get the new view controller using [segue destinationViewController].
-    // Pass the selected object to the new view controller.
-}
-*/
-
 -(NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section
 {
+    DLog(@"count:%zi",_arrayRecord.count);
     return _arrayRecord.count;
 }
 
@@ -121,7 +223,8 @@
 {
     static NSString *strRecordViewIdentifier = @"kRecordViewIdentifier";
     DownCell *cell = [tableView dequeueReusableCellWithIdentifier:strRecordViewIdentifier];
-    if (cell==nil) {
+    if (cell==nil)
+    {
         cell = [[DownCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:strRecordViewIdentifier];
     }
     RecordModel *record = [_arrayRecord objectAtIndex:indexPath.row];
@@ -201,6 +304,44 @@
 -(CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath
 {
     return 95;
+}
+
+- (BOOL)shouldAutorotate
+{
+    return NO;
+}
+
+- (NSUInteger)supportedInterfaceOrientations
+{
+    return UIInterfaceOrientationMaskPortrait;
+}
+
+- (UIInterfaceOrientation)preferredInterfaceOrientationForPresentation
+{
+    return UIInterfaceOrientationPortrait;
+}
+
+-(void)setLayout
+{
+    [self.view setNeedsDisplay];
+}
+
+-(void)viewWillLayoutSubviews
+{
+    [super viewWillLayoutSubviews];
+    
+//    [[UIApplication sharedApplication] setStatusBarOrientation:UIInterfaceOrientationPortrait animated:YES];
+    
+//    [[UIDevice currentDevice] setValue: [NSNumber numberWithInteger:UIDeviceOrientationPortrait] forKey:@"orientation"];
+//    CGFloat duration = [UIApplication sharedApplication].statusBarOrientationAnimationDuration;
+//    [UIView beginAnimations:nil context:nil];
+//    [UIView setAnimationDuration:duration];
+//    CGRect frame = [UIScreen mainScreen].bounds;
+//    CGPoint center = CGPointMake(frame.origin.x + ceil(frame.size.width/2), frame.origin.y + ceil(frame.size.height/2));
+//    self.view.center = center;
+//    self.view.transform = CGAffineTransformIdentity;
+//    self.view.bounds = CGRectMake(0, 0, kScreenSourchWidth, kScreenSourchHeight);
+//    [UIView commitAnimations];
 }
 
 @end

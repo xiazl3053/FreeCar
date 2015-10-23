@@ -35,6 +35,9 @@
 {
     self.window = [[UIWindow alloc] initWithFrame:[[UIScreen mainScreen] bounds]];
     self.window.backgroundColor = [UIColor whiteColor];
+    
+    [[UIApplication sharedApplication] setStatusBarStyle:UIStatusBarStyleLightContent animated:YES];
+    
     IndexViewController *index = [[IndexViewController alloc] init];
     LeftViewController *left = [[LeftViewController alloc] init];
     WWSideslipViewController * slide = [[WWSideslipViewController alloc]initWithLeftView:left andMainView:index andRightView:nil andBackgroundImage:nil];
@@ -45,18 +48,15 @@
     //点击视图是是否恢复位置
     slide.sideslipTapGes.enabled = YES;
     
-//    [self.window addSubview:slide.view];
     [self.window setRootViewController:slide];
    
-
     [self.window makeKeyAndVisible];
     
     return YES;
 }
 
 - (void)applicationWillResignActive:(UIApplication *)application {
-    // Sent when the application is about to move from active to inactive state. This can occur for certain types of temporary interruptions (such as an incoming phone call or SMS message) or when the user quits the application and it begins the transition to the background state.
-    // Use this method to pause ongoing tasks, disable timers, and throttle down OpenGL ES frame rates. Games should use this method to pause the game.
+    [[NSNotificationCenter defaultCenter] postNotificationName:MESSAGE_ENTER_BACK_VC object:nil];
     [[MyBSDSocket sharedMyBSDSocket] closeSocket];
 }
 

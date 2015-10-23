@@ -30,4 +30,7 @@
 
 #define XCFONT(x) [UIFont fontWithName:@"Helvetica" size:x]
 
+#define XC_MAIN_COLOR  RGB(0, 188, 77)
+
+
 #endif

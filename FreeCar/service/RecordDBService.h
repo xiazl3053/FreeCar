@@ -17,4 +17,6 @@
 
 +(BOOL)removeArray:(NSArray *)array;
 
++(BOOL)queryRecordByName:(NSString *)strName;
+
 @end

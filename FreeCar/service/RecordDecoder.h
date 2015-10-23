@@ -19,6 +19,7 @@
 @property (readonly, nonatomic) CGFloat duration;
 
 -(id)initWithRtsp:(NSString *)strPath;
+
 -(NSArray *)decodeFrames;
 
 @end

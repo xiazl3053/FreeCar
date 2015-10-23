@@ -37,6 +37,22 @@
     return bReturn ;
 }
 
+
++(BOOL)queryRecordByName:(NSString *)strName
+{
+    NSString *strSql = [NSString stringWithFormat:@"select * from recording where filename=?"];
+    
+    FMDatabase *db = [RecordDBService initDatabaseUser];
+    
+    FMResultSet *rs = [db executeQuery:strSql,strName];
+    
+    if(rs.next)
+    {
+        return YES;
+    }
+    return NO;
+}
+
 +(NSArray*)queryAllRecord
 {
     NSMutableArray *array = [NSMutableArray array];

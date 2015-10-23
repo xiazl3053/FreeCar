@@ -21,18 +21,20 @@
     UIPickerView *pickerResolu;
     NSArray *aryStamp;
     NSArray *aryResolution;
-   
+    UIDatePicker *datePicker;
+    
     UIView *viewStamp;
     UIView *viewResolution;
-    UIButton *btnStamp;
-    UIButton *btnResolu;
+    UIView *viewDate;
     
+    UIButton *btnStamp;
+
+    UIButton *btnResolu;
     int nAllSpace;
     int nFreeSpace;
-    NSString *strStamp;
-    NSString *strRelolution;
 }
-
+@property (nonatomic,copy) NSString *strStamp;
+@property (nonatomic,copy) NSString* strRelolution;
 @property (nonatomic,strong) UITableView *tableView;
 
 @end
@@ -41,6 +43,8 @@
 
 -(void)settingStamp
 {
+    [self.view makeToastActivity];
+    
     NSInteger nRow = [pickerStamp selectedRowInComponent:0];
     NSString *strInfo=nil;
     if(nRow==2)
@@ -51,19 +55,23 @@
     {
         strInfo = [aryStamp objectAtIndex:nRow];
     }
-    MyBSDSocket *mySock = [MyBSDSocket sharedMyBSDSocket];
-    
-    [mySock settingTimeInfo:strInfo type:0];
-    
-    strStamp = strInfo;
-    
-    NSIndexPath *indexpath = [_tableView indexPathForSelectedRow];
-    
-    NSArray *aryIndex = [[NSArray alloc] initWithObjects:indexpath, nil];
-    
-    [_tableView reloadRowsAtIndexPaths:aryIndex withRowAnimation:UITableViewRowAnimationFade];
-    
-    viewStamp.hidden = YES;
+    __block NSString *__strInfo = strInfo;
+    __weak SettingViewController *__self = self;
+    __weak UIView *__viewStamp = viewStamp;
+    dispatch_async(dispatch_get_global_queue(0, 0), ^{
+        MyBSDSocket *mySock = [MyBSDSocket sharedMyBSDSocket];
+        if([mySock settingTimeInfo:__strInfo type:0])
+        {
+            __self.strStamp = __strInfo;
+        }
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [__self.view hideToastActivity];
+            
+            [__self.tableView reloadData];
+            
+            __viewStamp.hidden = YES;
+        });
+    });
 }
 
 -(void)viewDidAppear:(BOOL)animated
@@ -83,14 +91,80 @@
     
     nAllSpace = [mySock getTotalInfo];
     
-    strStamp = [mySock getStamp];
+    _strStamp = [mySock getStamp];
     
-    strRelolution = [mySock getResolution];
+    _strRelolution = [mySock getResolution];
     
     __weak SettingViewController *__self = self;
     dispatch_async(dispatch_get_main_queue(),
     ^{
         [__self.tableView reloadData];
+    });
+}
+
+-(void)initDateView
+{
+    viewDate = [[UIView alloc] initWithFrame:self.view.bounds];
+    UIView *headView = [[UIView alloc] initWithFrame:Rect(0, 0,kScreenSourchWidth, kScreenSourchHeight-254)];
+    [headView setBackgroundColor:RGB(128, 128, 128)];
+    [viewDate addSubview:headView];
+    headView.alpha = 0.5f;
+    UIView *backView = [[UIView alloc] initWithFrame:Rect(0, kScreenSourchHeight-254 , kScreenSourchWidth, 254)];
+    [viewDate addSubview:backView];
+    [backView setBackgroundColor:RGB(255, 255, 255)];
+    
+    UIButton *btnCan = [UIButton buttonWithType:UIButtonTypeCustom];
+    [btnCan setTitle:@"Cancel" forState:UIControlStateNormal];
+    [btnCan setTitleColor:RGB(0, 188, 77) forState:UIControlStateNormal];
+    [backView addSubview:btnCan];
+    btnCan.titleLabel.font = XCFONT(15);
+    btnCan.frame = Rect(10, 0,70, 37);
+    [btnCan addTarget:self action:@selector(hiddenDate) forControlEvents:UIControlEventTouchUpInside];
+    
+    UIButton *btnDate = [UIButton buttonWithType:UIButtonTypeCustom];
+    [backView addSubview:btnDate];
+    [btnDate setTitle:@"OK" forState:UIControlStateNormal];
+    [btnDate setTitleColor:RGB(0, 188, 77) forState:UIControlStateNormal];
+    btnDate.titleLabel.font = XCFONT(15);
+    [btnDate addTarget:self action:@selector(setDateInfo) forControlEvents:UIControlEventTouchUpInside];
+    btnDate.frame = Rect(kScreenSourchWidth-50,0, 44,37);
+  
+    UILabel *lblContent = [[UILabel alloc] initWithFrame:Rect(0,37, kScreenSourchWidth, 1)];
+    [lblContent setBackgroundColor:[UIColor grayColor]];
+    [backView addSubview:lblContent];
+   
+    datePicker = [[UIDatePicker alloc]initWithFrame:Rect(0, 38, kScreenSourchWidth, 216)];
+    [datePicker setDatePickerMode:UIDatePickerModeDateAndTime];
+//    NSDateFormatter *fmt = [[NSDateFormatter alloc] init];
+//    fmt.dateFormat = @"yyyy-MM-dd HH:mm:ss";
+//    NSDate *dateInfo = [fmt dateFromString:@"2015-8-10 0:0:0"];
+    [backView addSubview:datePicker];
+    
+    [self.view addSubview:viewDate];
+    viewDate.hidden = YES;
+}
+
+-(void)hiddenDate
+{
+    viewDate.hidden = YES;
+}
+
+-(void)setDateInfo
+{
+    [self.view makeToastActivity];
+    __weak SettingViewController *__self = self;
+    __weak UIView *__viewDate = viewDate;
+    dispatch_async(dispatch_get_global_queue(0, 0),
+    ^{
+        NSDate *date = datePicker.date;
+        BOOL bFlag = [[MyBSDSocket sharedMyBSDSocket] setClock:date];
+        if (bFlag)
+        {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                [__self.view hideToastActivity];
+                __viewDate.hidden = YES;
+            });
+        }
     });
 }
 
@@ -104,6 +178,14 @@
     UIView *backView = [[UIView alloc] initWithFrame:Rect(0, kScreenSourchHeight-254 , kScreenSourchWidth, 254)];
     [viewResolution addSubview:backView];
     [backView setBackgroundColor:RGB(255, 255, 255)];
+    
+    UIButton *btnCan = [UIButton buttonWithType:UIButtonTypeCustom];
+    [btnCan setTitle:@"Cancel" forState:UIControlStateNormal];
+    [btnCan setTitleColor:RGB(0, 188, 77) forState:UIControlStateNormal];
+    [backView addSubview:btnCan];
+    btnCan.titleLabel.font = XCFONT(15);
+    btnCan.frame = Rect(10, 0,70, 37);
+    [btnCan addTarget:self action:@selector(hiddenResolu) forControlEvents:UIControlEventTouchUpInside];
     
     btnResolu = [UIButton buttonWithType:UIButtonTypeCustom];
     [backView addSubview:btnResolu];
@@ -133,20 +215,26 @@
     
 }
 
+-(void)hiddenResolu
+{
+    viewResolution.hidden = YES;
+}
+
 -(void)setResolution
 {
-    
-    [[MyBSDSocket sharedMyBSDSocket] setResolution:[aryResolution objectAtIndex:[pickerResolu selectedRowInComponent:0]]];
-    
-    strRelolution = [aryResolution objectAtIndex:[pickerResolu selectedRowInComponent:0]];
-    
-    NSIndexPath *indexpath = [_tableView indexPathForSelectedRow];
-    
-    NSArray *aryIndex = [[NSArray alloc] initWithObjects:indexpath, nil];
-    
-    [_tableView reloadRowsAtIndexPaths:aryIndex withRowAnimation:UITableViewRowAnimationFade];
-    
-    viewResolution.hidden = YES;
+    [self.view makeToastActivity];
+    __weak SettingViewController *__self = self;
+    __weak UIView *__viewResolution = viewResolution;
+    dispatch_async(dispatch_get_global_queue(0, 0), ^{
+        [[MyBSDSocket sharedMyBSDSocket] setResolution:[aryResolution objectAtIndex:[pickerResolu selectedRowInComponent:0]]];
+        __self.strRelolution = [aryResolution objectAtIndex:[pickerResolu selectedRowInComponent:0]];
+        dispatch_async(dispatch_get_main_queue(),
+        ^{
+            [__self.view hideToastActivity];
+            [__self.tableView reloadData];
+            __viewResolution.hidden = YES;
+        });
+    });
 }
 
 -(void)initPickerStamp
@@ -159,6 +247,14 @@
     UIView *backView = [[UIView alloc] initWithFrame:Rect(0, kScreenSourchHeight-254 , kScreenSourchWidth, 254)];
     [viewStamp addSubview:backView];
     [backView setBackgroundColor:RGB(255, 255, 255)];
+    
+    UIButton *btnCan = [UIButton buttonWithType:UIButtonTypeCustom];
+    [btnCan setTitle:@"Cancel" forState:UIControlStateNormal];
+    [btnCan setTitleColor:RGB(0, 188, 77) forState:UIControlStateNormal];
+    [backView addSubview:btnCan];
+    btnCan.titleLabel.font = XCFONT(15);
+    btnCan.frame = Rect(10, 0,70, 37);
+    [btnCan addTarget:self action:@selector(hiddenStamp) forControlEvents:UIControlEventTouchUpInside];
     
     btnStamp = [UIButton buttonWithType:UIButtonTypeCustom];
     [backView addSubview:btnStamp];
@@ -184,12 +280,17 @@
     viewStamp.hidden = YES;
 }
 
+-(void)hiddenStamp
+{
+    viewStamp.hidden = YES;
+}
+
 -(void)initWithArray
 {
     firstAry = [[NSArray alloc] initWithObjects:@"Video stamp",@"Format Camera", nil];
     secondAry = [[NSArray alloc] initWithObjects:@"File sorting",@"Network caching value"
                  ,@"Time setting",@"Total space",@"Free space",@"video_resolution",nil];
-    thrAry = [[NSArray alloc] initWithObjects:@"App Version",@"Product Name",@"About",@"Firmware version", nil];
+    thrAry = [[NSArray alloc] initWithObjects:@"App Version",@"Product Name",@"About",nil];
 }
 
 -(void)initWithTable
@@ -225,22 +326,13 @@
     [self initWithTable];
     [self initPickerStamp];
     [self initPickerResolu];
+    [self initDateView];
 }
 
 - (void)didReceiveMemoryWarning {
     [super didReceiveMemoryWarning];
     // Dispose of any resources that can be recreated.
 }
-
-/*
-#pragma mark - Navigation
-
-// In a storyboard-based application, you will often want to do a little preparation before navigation
-- (void)prepareForSegue:(UIStoryboardSegue *)segue sender:(id)sender {
-    // Get the new view controller using [segue destinationViewController].
-    // Pass the selected object to the new view controller.
-}
-*/
 
 -(NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section
 {
@@ -277,15 +369,17 @@
         case 0:
         {
             strText = [firstAry objectAtIndex:indexPath.row];
-            if (indexPath.row==0 && strStamp!= nil && ![strStamp isEqualToString:@""])
+            if (indexPath.row==0 && _strStamp!= nil && ![_strStamp isEqualToString:@""])
             {
-                [cell setContent:strStamp];
+                [cell setContent:_strStamp];
             }
         }
         break;
+            
         case 1:
         {
             strText = [secondAry objectAtIndex:indexPath.row];
+            
             if (indexPath.row ==3 && nAllSpace>0)
             {
                 [cell setContent:[NSString stringWithFormat:@"%.02f MB",(float)nAllSpace/1024]];
@@ -294,15 +388,27 @@
             {
                 [cell setContent:[NSString stringWithFormat:@"%.02f MB",(float)nFreeSpace/1024]];
             }
-            else if(indexPath.row == 5 && strRelolution != nil && ![strRelolution isEqualToString:@""])
+            else if(indexPath.row == 5 && _strRelolution != nil && ![_strRelolution isEqualToString:@""])
             {
-                [cell setContent:strRelolution];
+                [cell setContent:_strRelolution];
             }
         }
         break;
         case 2:
         {
             strText = [thrAry objectAtIndex:indexPath.row];
+            if (indexPath.row == 0)
+            {
+                [cell setContent:@"1.0"];
+            }
+            else if(indexPath.row == 1)
+            {
+                [cell setContent:@"SmartCarLife"];
+            }
+            else if(indexPath.row == 2)
+            {
+                
+            }
         }
         break;
     }
@@ -342,10 +448,17 @@
             }
             else
             {
-                UIAlertView *alert = [[UIAlertView alloc] initWithTitle:@"Remind" message:@"Are you sure Format?" delegate:self cancelButtonTitle:@"cancel" otherButtonTitles:@"continue", nil];
-                [alert show];
-                alert.tag = 1000;
-                alert.delegate = self;
+                if (_strRelolution)
+                {
+                    UIAlertView *alert = [[UIAlertView alloc] initWithTitle:@"Remind" message:@"Are you sure Format?" delegate:self cancelButtonTitle:@"cancel" otherButtonTitles:@"continue", nil];
+                    [alert show];
+                    alert.tag = 1000;
+                    alert.delegate = self;
+                }
+                else
+                {
+                    [self.view makeToast:@"导航仪通信异常"];
+                }
             }
         }
         break;
@@ -354,6 +467,10 @@
             if (indexPath.row == 5)
             {
                 viewResolution.hidden = NO;
+            }
+            else if(indexPath.row==2)
+            {
+                viewDate.hidden = NO;
             }
         }
         default:
@@ -390,14 +507,26 @@
     return 44;
 }
 
+-(void)format_gcd
+{
+    __weak SettingViewController *__self = self;
+    [self.view makeToastActivity];
+    dispatch_async(dispatch_get_global_queue(0, 0), ^{
+        [[MyBSDSocket sharedMyBSDSocket] formatSdCard];
+        dispatch_async(dispatch_get_main_queue(),
+        ^{
+            [__self.view hideToastActivity];
+        });
+    });
+}
+
 -(void)alertView:(UIAlertView *)alertView clickedButtonAtIndex:(NSInteger)buttonIndex
 {
     if (alertView.tag == 1000) {
         switch (buttonIndex) {
             case 1:
             {
-                DLog(@"1111");
-                [[MyBSDSocket sharedMyBSDSocket] formatSdCard];
+                [self format_gcd];
             }
             break;
                 

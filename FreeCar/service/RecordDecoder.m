@@ -126,8 +126,9 @@ static void avStreamFPSTimeBase(AVStream *st, CGFloat defaultTimeBase, CGFloat *
 
 -(BOOL)connectRtsp
 {
-    ///var/mobile/Containers/Data/Application/B1AA65BD-90B7-44C4-AF0A-63103B275320/Library/record/08061712_0007.MP4
+    
     NSString *strPath = [NSString stringWithFormat:@"%@/record/%@",kLibraryPath,_strRtsp];
+    
     if(avformat_open_input(&pFormatCtx,[strPath UTF8String], NULL, NULL)!=0)
     {
         DLog(@"连接失败");
@@ -162,9 +163,10 @@ static void avStreamFPSTimeBase(AVStream *st, CGFloat defaultTimeBase, CGFloat *
     {
         return NO;
     }
-    pFrame = avcodec_alloc_frame();
+    pFrame = av_frame_alloc();
     
     AVStream *st = pFormatCtx->streams[_videoStream];
+    
     avStreamFPSTimeBase(st, 0.04, &_fps, &_videoTimeBase);
     
     _nSecond = (int)pFormatCtx->streams[_videoStream]->duration*pFormatCtx->streams[_videoStream]->time_base.num/pFormatCtx->streams[_videoStream]->time_base.den;
@@ -189,7 +191,6 @@ static void avStreamFPSTimeBase(AVStream *st, CGFloat defaultTimeBase, CGFloat *
             _isEOF = YES;
             break;
         }
-//        DLog(@"packet:%d",packet.size);
         if(packet.stream_index == _videoStream)
         {
             int pktSize = packet.size;

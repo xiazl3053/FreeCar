@@ -74,23 +74,34 @@
     av_register_all();
     avcodec_register_all();
     _strRtsp = strPath;
-    [self connectRtsp];
     return self;
 }
 
 -(BOOL)connectRtsp
 {
     avformat_network_init();
+//    AVDictionary* pOptions = NULL;
     if(avformat_open_input(&pFormatCtx,[_strRtsp UTF8String], NULL, NULL)!=0)
     {
         DLog(@"连接失败");
+        if (_rtspBlock)
+        {
+            _rtspBlock(0);
+        }
         return NO;
     }
     DLog(@"连接成功");
+    pFormatCtx->probesize = 100 *1024;
+    pFormatCtx->max_analyze_duration2 = 5 * AV_TIME_BASE;
   
     if(avformat_find_stream_info(pFormatCtx, NULL)<0)
     {
         DLog(@"找不到码流");
+        if (_rtspBlock)
+        {
+            _rtspBlock(2);
+        }
+        
         return NO;
     }
     DLog(@"找到码流信息");
@@ -115,9 +126,13 @@
     {
         return NO;
     }
-    pFrame = avcodec_alloc_frame();
+    pFrame = av_frame_alloc();
     _fps = 25;
-   
+    _isEOF = NO;
+    if (_rtspBlock)
+    {
+        _rtspBlock(1);
+    }
     return YES;
 }
 
@@ -158,10 +173,14 @@
                 break;
             }
         }
+        else if(nRef == -1)
+        {
+             _isEOF = YES;
+             break;
+        }
         else
         {
-            //结束
-            break;
+            av_free_packet(&packet);
         }
     }
     av_free_packet(&packet);
@@ -233,9 +252,21 @@
         _swsContext = NULL;
     }
     
-    if (_pictureValid) {
+    if (_pictureValid)
+    {
         avpicture_free(&_picture);
         _pictureValid = NO;
     }
 }
+
+-(void)dealloc
+{
+    DLog(@"释放");
+    [self closeScaler];
+    av_frame_free(&pFrame);
+    avcodec_free_context(&pCodecCtx);
+//    avformat_free_context(pFormatCtx);
+//    avformat_close_input(&pFormatCtx);
+}
+
 @end

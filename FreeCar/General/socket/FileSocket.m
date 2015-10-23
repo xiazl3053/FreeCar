@@ -25,6 +25,8 @@
 #import <time.h>
 #import <errno.h>
 
+#define kReadFileLength   1024*400
+
 @interface FileSocket ()
 {
     int nSockfd;
@@ -126,9 +128,9 @@
     
     DLog(@"GG:strFile:%@",strFile);
     
-    char cBuf[1024*400];
+    char cBuf[kReadFileLength];
     
-    memset(&cBuf, 0, 1024*400);
+    memset(&cBuf, 0, kReadFileLength);
     
     int i=0;
     
@@ -139,7 +141,7 @@
     while (YES)
     {
         nNumber = 0;
-        nRead = nAllCount - nTemp > 1024*390 ? 1024*390 : nAllCount - nTemp;
+        nRead = nAllCount - nTemp > kReadFileLength ? kReadFileLength : nAllCount - nTemp;
         if (nRead == 0)
         {
             break;
@@ -177,5 +179,9 @@
     
 }
 
+-(void)closeSocket
+{
+    close(nSockfd);
+}
 
 @end

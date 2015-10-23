@@ -12,7 +12,9 @@
 #import "DecoderPublic.h"
 #import "RecordModel.h"
 
-#define _minBufferedDuration 0.04
+#define _minBufferedDuration 0.2
+#define _maxBufferedDuration 0.4
+
 
 @interface PlayViewController ()
 {
@@ -36,6 +38,9 @@
     
     dispatch_queue_t _dispatchQueue;
     
+    UITapGestureRecognizer *tapGesture;
+    
+    int nIndex;
 }
 @property (nonatomic,strong) UIButton *btnPlay;
 @property (nonatomic,strong) UIButton *btnRewind;
@@ -79,8 +84,12 @@ NSString * formatTimeInterval(CGFloat seconds, BOOL isLeft)
 {
     [super viewDidLoad];
     [self.view setBackgroundColor:RGB(0, 0, 0)];
+    nIndex = 0;
     [self prefersStatusBarHidden];
+    
+    tapGesture = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(tapEvent)];
     _videoFrames = [NSMutableArray array];
+    
     [self createGlView];
     
     CGFloat fWidth = kScreenSourchWidth > kScreenSourchHeight ? kScreenSourchWidth : kScreenSourchHeight;
@@ -123,7 +132,7 @@ NSString * formatTimeInterval(CGFloat seconds, BOOL isLeft)
     _doneButton.frame = CGRectMake(5,2.5,44,44);
     _doneButton.titleLabel.font = [UIFont fontWithName:@"Helvetica" size:18];
     _doneButton.showsTouchWhenHighlighted = YES;
-    [_doneButton addTarget:self action:@selector(doneDidTouch:) forControlEvents:UIControlEventTouchUpInside];
+    [_doneButton addTarget:self action:@selector(doneDidTouch) forControlEvents:UIControlEventTouchUpInside];
     [_topHUD addSubview:_doneButton];
     
     _downHUD = [[UIView alloc] initWithFrame:Rect(0, fHeight-50, fWidth, 50)];
@@ -154,7 +163,7 @@ NSString * formatTimeInterval(CGFloat seconds, BOOL isLeft)
     _leftLabel.textAlignment = NSTextAlignmentLeft;
     _leftLabel.textColor = [UIColor grayColor];
     _leftLabel.font = [UIFont fontWithName:@"Helvetica" size:12.0f];
-    _leftLabel.text = @"-99:59:59";
+    _leftLabel.text = @"00:00:00";
     _leftLabel.font = [UIFont fontWithName:@"Helvetica" size:12];
     
     [_downHUD addSubview:_progressSlider];
@@ -193,7 +202,15 @@ NSString * formatTimeInterval(CGFloat seconds, BOOL isLeft)
     _btnRewind.frame = Rect(fWidth/2-50, 40, 30, 30);
     _btnForward.frame = Rect(fWidth/2+50, 40, 30, 30);
     
+    
+    
    decode = [[RecordDecoder alloc] initWithRtsp:_model.strName];
+}
+
+-(void)tapEvent
+{
+    _topHUD.hidden = !_topHUD.hidden;
+    _downHUD.hidden = !_downHUD.hidden;
 }
 
 -(void)playDidTouch:(id)sender
@@ -209,7 +226,13 @@ NSString * formatTimeInterval(CGFloat seconds, BOOL isLeft)
         {
             _bPlaying = YES;
             _bDecoding = NO;
-            [self startPlay];
+            _btnPlay.selected = YES;
+            __weak PlayViewController *__self = self;
+            dispatch_time_t popTime = dispatch_time(DISPATCH_TIME_NOW, 0.3 * NSEC_PER_SEC);
+            dispatch_after(popTime, dispatch_get_global_queue(0, 0),
+            ^{
+                [__self startPlay];
+            });
             _pausing = NO;
         }
     }
@@ -229,6 +252,7 @@ NSString * formatTimeInterval(CGFloat seconds, BOOL isLeft)
     {
         return;
     }
+    _pausing = YES;
     __weak UIButton *btnPlay = _btnPlay;
     dispatch_async(dispatch_get_main_queue(), ^{
         btnPlay.selected = NO;
@@ -243,7 +267,6 @@ NSString * formatTimeInterval(CGFloat seconds, BOOL isLeft)
 {
     if(_moviePosition+nAllTime * 0.2 < nAllTime)
     {
-        
         [self setMoviePosition: _moviePosition + nAllTime*0.2];
     }
 }
@@ -292,14 +315,17 @@ NSString * formatTimeInterval(CGFloat seconds, BOOL isLeft)
     ^{
            [weakSelf setDecoderPosition: position];
            [weakSelf setMoviePositionFromDecoder];
-           [weakSelf updateHUD];
+           dispatch_async(dispatch_get_main_queue(),
+           ^{
+                [weakSelf updateHUD];
+           });
            if(!weakSelf.pausing)
            {
-               __strong PlayViewController *__strongSelf = weakSelf;
-               dispatch_after(dispatch_time(DISPATCH_TIME_NOW,0.3 * NSEC_PER_SEC),dispatch_get_global_queue(0, 0),^{
-                   __strongSelf.bPlaying = YES;
-                   __strongSelf.bDecoding = NO;
-                   [__strongSelf startPlay];
+               weakSelf.bPlaying = YES;
+               weakSelf.bDecoding = NO;
+               dispatch_after(dispatch_time(DISPATCH_TIME_NOW,0.3 * NSEC_PER_SEC),dispatch_get_global_queue(0, 0),
+               ^{
+                   [weakSelf startPlay];
                });
            }
     });
@@ -316,14 +342,20 @@ NSString * formatTimeInterval(CGFloat seconds, BOOL isLeft)
     _moviePosition= decode.position;
 }
 
--(void)doneDidTouch:(UIButton *)btnSender
+-(void)doneDidTouch
 {
     __weak PlayViewController *__self = self;
     dispatch_async(dispatch_get_global_queue(0, 0),
     ^{
         [__self stopPlay];
     });
-    [self dismissViewControllerAnimated:YES completion:nil];
+    
+//    [[UIDevice currentDevice] setValue: [NSNumber numberWithInteger:UIDeviceOrientationLandscapeLeft] forKey:@"orientation"];
+    [self dismissViewControllerAnimated:YES completion:
+     ^{
+//        [[UIApplication sharedApplication] setStatusBarOrientation:UIInterfaceOrientationPortrait animated:YES];
+        [[NSNotificationCenter defaultCenter] postNotificationName:MESSAGE_UPDATE_RECORD_VC object:nil];
+    }];
 }
 
 -(void)viewDidAppear:(BOOL)animated
@@ -331,27 +363,6 @@ NSString * formatTimeInterval(CGFloat seconds, BOOL isLeft)
     [super viewDidAppear:animated];
     _dispatchQueue = dispatch_queue_create("xzlDecoder", DISPATCH_QUEUE_SERIAL);
     _btnPlay.selected = YES;
-    
-//    CGFloat fWidth = kScreenSourchWidth > kScreenSourchHeight ? kScreenSourchWidth : kScreenSourchHeight;
-//    CGFloat fHeight = kScreenSourchWidth > kScreenSourchHeight ? kScreenSourchHeight : kScreenSourchWidth;
-// 
-//    _topHUD.frame = Rect(0, 0, fWidth, 50);
-//    
-//    [self.view insertSubview:_imgView atIndex:0];
-//    
-//    _lblName.frame = Rect(40, 15, 200, 20);
-//    
-//    bgView.frame = _topHUD.bounds;
-//    
-//    _downHUD.frame = Rect(0, fHeight-50, fWidth, 50);
-//    
-//    downBgView.frame = _downHUD.bounds;
-//    
-//    _progressSlider.frame = Rect(68,5,fWidth-136,20);
-//    
-//    _leftLabel.frame = Rect(fWidth-60,5,60,20);
-//    
-//    _imgView.frame = Rect(0, 0, fWidth, fHeight);
     
     __weak PlayViewController *__self = self;
     dispatch_async(dispatch_get_global_queue(0, 0),
@@ -363,6 +374,7 @@ NSString * formatTimeInterval(CGFloat seconds, BOOL isLeft)
 -(void)viewDidLayoutSubviews
 {
     [super viewDidLayoutSubviews];
+    
     CGFloat fWidth = kScreenSourchWidth > kScreenSourchHeight ? kScreenSourchWidth : kScreenSourchHeight;
     CGFloat fHeight = kScreenSourchWidth > kScreenSourchHeight ? kScreenSourchHeight : kScreenSourchWidth;
     
@@ -427,6 +439,8 @@ NSString * formatTimeInterval(CGFloat seconds, BOOL isLeft)
 {
     _imgView = [[UIImageView alloc] initWithFrame:Rect(0, 0, self.view.width, self.view.height-20)];
     bgView = [[UIImageView alloc] initWithImage:[UIImage imageNamed:@"ptz_bg"]];
+    [_imgView setUserInteractionEnabled:YES];
+    [_imgView addGestureRecognizer:tapGesture];
     [bgView setFrame:_topHUD.bounds];
 }
 
@@ -445,6 +459,7 @@ NSString * formatTimeInterval(CGFloat seconds, BOOL isLeft)
         [_videoFrames removeAllObjects];
     }
     decode = nil;
+    
 }
 
 -(void)startPlay
@@ -463,11 +478,14 @@ NSString * formatTimeInterval(CGFloat seconds, BOOL isLeft)
     if(_bPlaying)
     {
         const NSUInteger leftFrames = _videoFrames.count;
-        if (0 == leftFrames) {
-            
+        if (0 == leftFrames)
+        {
             if (decode.isEOF)
             {
-               [self stopPlay];
+                __weak PlayViewController *__self = self;
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    [__self doneDidTouch];
+                });
                 return;
             }
             
@@ -475,6 +493,7 @@ NSString * formatTimeInterval(CGFloat seconds, BOOL isLeft)
                 _buffered = YES;
             }
         }
+        
         if (!leftFrames ||
             !(_bufferedDuration > _minBufferedDuration))
         {
@@ -483,16 +502,20 @@ NSString * formatTimeInterval(CGFloat seconds, BOOL isLeft)
         }
         __weak PlayViewController *__weakSelf = self;
         const NSTimeInterval correction = [self tickCorrection];
-        const NSTimeInterval time = MAX(interval + correction, 0.01);
+        const NSTimeInterval time = MAX(interval + correction, 0.001);
         dispatch_time_t popTime = dispatch_time(DISPATCH_TIME_NOW, time * NSEC_PER_SEC);
-        dispatch_after(popTime, dispatch_get_main_queue(),
+        dispatch_after(popTime, dispatch_get_global_queue(0, 0),
         ^{
             [__weakSelf startPlay];
         });
     }
     if (_tickCounter++%3==0)
     {
-         [self updateHUD];
+        __weak PlayViewController *__self = self;
+        dispatch_async(dispatch_get_main_queue(),
+        ^{
+            [__self updateHUD];
+        });
     }
 }
 
@@ -512,8 +535,9 @@ NSString * formatTimeInterval(CGFloat seconds, BOOL isLeft)
 - (CGFloat) tickCorrection
 {
     if (_buffered)
+    {
         return 0;
-    
+    }
     const NSTimeInterval now = [NSDate timeIntervalSinceReferenceDate];
     if (!_tickCorrectionTime)
     {
@@ -531,7 +555,6 @@ NSString * formatTimeInterval(CGFloat seconds, BOOL isLeft)
         correction = 0;
         _tickCorrectionTime = 0;
     }
-    
     return correction;
 }
 
@@ -570,12 +593,11 @@ NSString * formatTimeInterval(CGFloat seconds, BOOL isLeft)
             _bufferedDuration += frame.duration;
         }
     }
-    return _bPlaying && _bufferedDuration < 0.03;
+    return _bPlaying && _bufferedDuration < _maxBufferedDuration;
 }
 
 -(CGFloat)updatePlayUI
 {
-//    CGFloat interval = 0;
     KxVideoFrame *frame;
     @synchronized(_videoFrames)
     {
@@ -588,8 +610,14 @@ NSString * formatTimeInterval(CGFloat seconds, BOOL isLeft)
     }
     if (frame)
     {
+        DLog(@"贴图:%d",nIndex++);
         KxVideoFrameRGB *rgbFrame = (KxVideoFrameRGB *)frame;
-        _imgView.image = [rgbFrame asImage];
+        __weak KxVideoFrameRGB *__rgbFrame = rgbFrame;
+        __weak UIImageView *__imgView = _imgView;
+        dispatch_sync(dispatch_get_main_queue(),
+        ^{
+            __imgView.image = [__rgbFrame asImage];
+        });
         _moviePosition = frame.position;
         return frame.duration;
     }
@@ -608,7 +636,7 @@ NSString * formatTimeInterval(CGFloat seconds, BOOL isLeft)
 
 -(BOOL)prefersStatusBarHidden
 {
-    return  YES;
+    return YES;
 }
 
 

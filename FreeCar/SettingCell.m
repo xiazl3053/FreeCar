@@ -67,12 +67,15 @@
 
 -(void)setContent:(NSString *)strContent
 {
-    _txtContent = [[UILabel alloc] initWithFrame:Rect(kScreenSourchWidth-180,15,140,15)];
+    if (_txtContent==nil)
+    {
+        _txtContent = [[UILabel alloc] initWithFrame:Rect(kScreenSourchWidth-180,15,140,15)];
+        [_txtContent setFont:XCFONT(12)];
+        [_txtContent setTextColor:UIColorFromRGB(0X97989D)];
+        [_txtContent setTextAlignment:NSTextAlignmentRight];
+        [self.contentView addSubview:_txtContent];
+    }
     [_txtContent setText:strContent];
-    [_txtContent setFont:XCFONT(12)];
-    [_txtContent setTextColor:UIColorFromRGB(0X97989D)];
-    [_txtContent setTextAlignment:NSTextAlignmentRight];
-    [self.contentView addSubview:_txtContent];
 }
 
 @end
