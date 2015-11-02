@@ -8,6 +8,7 @@
 
 #import "DownRecordViewController.h"
 #import "AppDelegate.h"
+#import "MJRefresh.h"
 #import "RtspViewController.h"
 #import "UIView+Extension.h"
 #import "Toast+UIView.h"
@@ -21,7 +22,6 @@
 {
     FileSocket *fileSocket;
     NSMutableDictionary *dicDelete;
-    NSInteger nTag;
     UIButton *btnRight;
     UIView *viewColor;
 }
@@ -31,12 +31,15 @@
 @property (nonatomic,assign) BOOL bDownloading;
 @property (nonatomic,strong) UILabel *lblContent;
 @property (nonatomic,strong) UITableView *tableView;
-@property (nonatomic,strong) NSMutableArray *array;
+@property (nonatomic,strong) NSMutableArray *aryCom;
+@property (nonatomic,strong) NSMutableArray *aryAlarm;
+
 @property (nonatomic,strong) UIView *downView;
 @property (nonatomic,strong) UIView *downloadView;
 
 @property (nonatomic,strong) UISlider *downSlider;
 @property (nonatomic,strong) UILabel *lblName;
+@property (nonatomic,assign) NSInteger nTag;
 
 @end
 
@@ -47,7 +50,11 @@
     _downCell = nil;
     _lblContent = nil;
     _tableView = nil;
-    _array = nil;
+    [_aryAlarm removeAllObjects];
+    _aryAlarm = nil;
+    [_aryCom removeAllObjects];
+    _aryCom = nil;
+    
 }
 
 -(void)initViewNew
@@ -162,6 +169,7 @@
 
 -(void)selectDelAll:(UIButton *)btnSender
 {
+    NSMutableArray *_array = _nTag ==10001? _aryCom : _aryAlarm;
     if (btnSender.selected)
     {
         for (int i=0;i<_array.count;i++)
@@ -186,13 +194,14 @@
 -(void)delAll
 {
     __weak NSMutableDictionary *__dictDelete = dicDelete;
+    NSMutableArray *_array = _nTag == 10001 ? _aryCom : _aryAlarm;
     __weak NSMutableArray *__array = _array;
     __weak UITableView *__tableView = _tableView;
     
     _downView.hidden = YES;
     __weak DownRecordViewController *__self = self;
     [self.view makeToastActivity];
-    __block NSInteger __nTag = nTag;
+    __block NSInteger __nTag = _nTag;
     __weak UIButton *__btnRight = btnRight;
     dispatch_async(dispatch_get_global_queue(0, 0),
     ^{
@@ -220,9 +229,6 @@
     if (_tableView.editing == YES)
     {
         DLog(@"dicDelete:%@",dicDelete);
-        MyBSDSocket *bsdSocket = [MyBSDSocket sharedMyBSDSocket];
-        [bsdSocket removeFromArray:[dicDelete allValues] type:nTag==10001?1:2];
-        [_array removeObjectsInArray:[dicDelete allValues]];
         [_tableView setEditing:NO animated:YES];
         [_tableView reloadData];
         _downView.hidden = YES;
@@ -250,7 +256,7 @@
     
     [btnRight setTitle:@"Edit" forState:UIControlStateNormal];
     
-    [btnRight setImage:[UIImage imageNamed:@"OK_ICON"] forState:UIControlStateSelected];
+    [btnRight setTitle:@"Cancel" forState:UIControlStateSelected];
     
     [btnRight addTarget:self action:@selector(rightClick) forControlEvents:UIControlEventTouchUpInside];
      
@@ -276,7 +282,7 @@
     [btnAlarm addTarget:self action:@selector(touchEvent:) forControlEvents:UIControlEventTouchUpInside];
     btnCom.tag = 10001;
     btnAlarm.tag = 10002;
-    nTag = 10001;
+    _nTag = 10001;
     
     _lblContent = [[UILabel alloc] initWithFrame:Rect(1, 40, kScreenSourchWidth/2-1,4)];
     [_lblContent setBackgroundColor:[UIColor whiteColor]];
@@ -288,21 +294,32 @@
     _tableView.delegate = self;
     _tableView.dataSource = self;
     [_tableView setSeparatorStyle:UITableViewCellSeparatorStyleNone];
+    __weak DownRecordViewController *__self = self;
+    [_tableView addLegendHeaderWithRefreshingBlock:^{
+        if (__self.nTag==10001)
+        {
+            [__self initData:NO];
+        }
+        else
+        {
+            [__self initAlarm:NO];
+        }
+    }];
 }
 
 -(void)touchEvent:(UIButton *)btn
 {
     [btn addSubview:_lblContent];
     
-    nTag = btn.tag;
+    _nTag = btn.tag;
     
     if (btn.tag==10001)
     {
-        [self initData];
+        [self initData:YES];
     }
     else
     {
-        [self initAlarm];
+        [self initAlarm:YES];
     }
 }
 
@@ -310,8 +327,9 @@
 {
     [super viewDidLoad];
     
-    nTag = 10001;
-    _array = [NSMutableArray array];
+    _nTag = 10001;
+    _aryAlarm = [NSMutableArray array];
+    _aryCom = [NSMutableArray array];
     dicDelete = [NSMutableDictionary dictionary];
     [self.view setBackgroundColor:RGB(246, 246, 246)];
     [self initBodyView];
@@ -326,20 +344,32 @@
 -(void)viewDidAppear:(BOOL)animated
 {
     [super viewDidAppear:animated];
-    if (nTag)
+    
+    if (_aryCom.count>0 && [[MyBSDSocket sharedMyBSDSocket] getStatus])
     {
-        [self initData];
+        
     }
     else
     {
-        [self initAlarm];
+        if (_nTag)
+        {
+            [self initData:YES];
+        }
+        else
+        {
+            [self initAlarm:YES];
+        }
     }
 }
 
--(void)initAlarm
+-(void)initAlarm:(BOOL)bFlag
 {
-    [_array removeAllObjects];
-    [self updateView];
+    if (_aryAlarm.count > 0 && bFlag)
+    {
+        [_tableView reloadData];
+        return ;
+    }
+    [_aryAlarm removeAllObjects];
     __weak DownRecordViewController *__self =self;
     dispatch_async(dispatch_get_global_queue(0, 0),
    ^{
@@ -349,6 +379,7 @@
        {
            dispatch_async(dispatch_get_main_queue(), ^{
                [__self.view makeToast:@"No record"];
+               [__self.tableView.header endRefreshing];
                [__self.tableView reloadData];
            });
            return ;
@@ -357,26 +388,31 @@
    });
 }
 
--(void)initData
+-(void)initData:(BOOL)bFlag
 {
-    [_array removeAllObjects];
-    [self updateView];
+    if(_aryCom.count>0 && bFlag)
+    {
+        [_tableView reloadData];
+        return ;
+    }
+    [_aryCom removeAllObjects];
     __weak DownRecordViewController *__self =self;
     dispatch_async(dispatch_get_global_queue(0, 0),
-   ^{
+    ^{
        MyBSDSocket *bsdSocket = [MyBSDSocket sharedMyBSDSocket];
        NSData *data = [bsdSocket getComRecordInfo];
        if (data==nil)
        {
            dispatch_async(dispatch_get_main_queue(),
-           ^{
-               [__self.view makeToast:@"No record"];
-               [__self.tableView reloadData];
-           });
+          ^{
+              [__self.view makeToast:@"No record"];
+              [__self.tableView.header endRefreshing];
+              [__self.tableView reloadData];
+          });
            return ;
        }
        [__self comRecord:data];
-   });
+    });
 }
 
 -(void)comRecord:(NSData *)strData
@@ -388,14 +424,15 @@
         return ;
     }
     NSArray *array = [weatherDic objectForKey:@"listing"];
-    [_array removeAllObjects];
+    NSMutableArray *_array = _nTag == 10001 ? _aryCom : _aryAlarm;
+    
     for(int i=0;i<array.count;i++)
     {
         NSDictionary *song = [array objectAtIndex:i];
         RecordModel *record = [[RecordModel alloc] initWithItem:song];
         if([record.strName rangeOfString:@"_thm"].location == NSNotFound)
         {
-            record.nType = nTag==10001 ? 1 : 2;
+            record.nType = _nTag==10001 ? 1 : 2;
             [_array addObject:record];
         }
     }
@@ -405,15 +442,17 @@
 -(void)updateView
 {
     __weak UITableView *__tableView = _tableView;
-    dispatch_async(dispatch_get_main_queue(), ^{
+    dispatch_async(dispatch_get_main_queue(),
+    ^{
         [__tableView reloadData];
+        [__tableView.header endRefreshing];
     });
 }
 
 #pragma mark datasource
 -(NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section
 {
-    return _array.count;
+    return _nTag == 10001 ? _aryCom.count : _aryAlarm.count ;
 }
 
 -(UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath
@@ -424,7 +463,7 @@
     {
         cell = [[DownCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:strDownRecordIdentify];
     }
-
+    NSMutableArray *_array = _nTag == 10001 ? _aryCom : _aryAlarm;
     RecordModel *record = [_array objectAtIndex:indexPath.row];
     record.nId = indexPath.row;
     if (record)
@@ -441,10 +480,12 @@
 {
     if(tableView.editing ==YES)
     {
+        NSMutableArray *_array = _nTag == 10001 ? _aryCom : _aryAlarm;
         [dicDelete setObject:[_array objectAtIndex:indexPath.row] forKey:indexPath];
     }
     else
     {
+        NSMutableArray *_array = _nTag == 10001 ? _aryCom : _aryAlarm;
         RecordModel *model = [_array objectAtIndex:indexPath.row];
         RtspViewController *rtspView = [[RtspViewController alloc] initWithModel:model];
         [[[[UIApplication sharedApplication]keyWindow] rootViewController] presentViewController:rtspView animated:YES completion:nil];
@@ -556,9 +597,6 @@
 
 -(void)downloadStuats:(int)nCurrent all:(int)nAll
 {
-    NSString *strInfo = [NSString stringWithFormat:@"%.02f %%",(float)nCurrent/nAll * 100];
-    __block NSString *__strInfo = strInfo;
-    
     CGFloat fValue = (float)nCurrent/nAll;
     __block CGFloat __fValue = fValue;
     __weak UISlider *__slider = _downSlider;

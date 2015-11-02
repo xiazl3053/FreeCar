@@ -10,7 +10,51 @@
 #include "libavformat/avformat.h"
 #include "libswscale/swscale.h"
 #import "DecoderPublic.h"
+#include <sys/time.h>
+
 #define kLibraryPath  [NSSearchPathForDirectoriesInDomains(NSLibraryDirectory, NSUserDomainMask, YES) objectAtIndex:0]
+
+
+typedef struct exit_info
+{
+    int nExit;
+}exit_info;
+
+static void rtspTime(AVStream *st, CGFloat defaultTimeBase, CGFloat *pFPS, CGFloat *pTimeBase)
+{
+    CGFloat fps, timebase;
+    
+    if (st->time_base.den && st->time_base.num)
+        timebase = av_q2d(st->time_base);
+    else if(st->codec->time_base.den && st->codec->time_base.num)
+        timebase = av_q2d(st->codec->time_base);
+    else
+        timebase = defaultTimeBase;
+    
+    if (st->codec->ticks_per_frame != 1) {
+        NSLog(@"WARNING: st.codec.ticks_per_frame=%d", st->codec->ticks_per_frame);
+        //timebase *= st->codec->ticks_per_frame;
+    }
+    
+    if (st->avg_frame_rate.den && st->avg_frame_rate.num)
+        fps = av_q2d(st->avg_frame_rate);
+    else if (st->r_frame_rate.den && st->r_frame_rate.num)
+        fps = av_q2d(st->r_frame_rate);
+    else
+        fps = 1.0 / timebase;
+    
+    if (pFPS)
+        *pFPS = fps;
+    if (pTimeBase)
+        *pTimeBase = timebase;
+}
+
+static int decode_interrupt_cb(void *ctx)
+{
+    exit_info *is = ctx;
+//    DLog(@"nExit:%d",is->nExit);
+    return is->nExit;
+}
 
 @interface RtspDecode()
 {
@@ -23,9 +67,14 @@
     CGFloat fSrcWidth,fSrcHeight;
     int _videoStream;
     NSFileHandle *fileHandle;
+    NSMutableArray *_aryVideo;
     NSMutableData *data;
+    NSRecursiveLock *theLock;
+    exit_info *is;
 }
+
 @property (nonatomic,copy) NSString *strRtsp;
+
 @end
 
 
@@ -73,38 +122,40 @@
     self = [super init];
     av_register_all();
     avcodec_register_all();
+    avformat_network_init();
     _strRtsp = strPath;
     return self;
 }
 
 -(BOOL)connectRtsp
 {
-    avformat_network_init();
-//    AVDictionary* pOptions = NULL;
-    if(avformat_open_input(&pFormatCtx,[_strRtsp UTF8String], NULL, NULL)!=0)
+    pFormatCtx = avformat_alloc_context();
+    is = malloc(sizeof(exit_info));
+    is->nExit = 0;
+    pFormatCtx->interrupt_callback.callback = decode_interrupt_cb;
+    pFormatCtx->interrupt_callback.opaque = is;
+    if(avformat_open_input(&pFormatCtx, [_strRtsp UTF8String], NULL, NULL) != 0 )
     {
         DLog(@"连接失败");
         if (_rtspBlock)
         {
-            _rtspBlock(0);
+            _rtspBlock(2);
         }
+        avformat_close_input(&pFormatCtx);
+        pFormatCtx = NULL;
         return NO;
     }
-    DLog(@"连接成功");
+    
     pFormatCtx->probesize = 100 *1024;
     pFormatCtx->max_analyze_duration2 = 5 * AV_TIME_BASE;
-  
     if(avformat_find_stream_info(pFormatCtx, NULL)<0)
     {
-        DLog(@"找不到码流");
         if (_rtspBlock)
         {
             _rtspBlock(2);
         }
-        
         return NO;
     }
-    DLog(@"找到码流信息");
     _videoStream = -1;
     int i=0;
     for (i = 0; i < pFormatCtx->nb_streams;i++)
@@ -126,8 +177,16 @@
     {
         return NO;
     }
+//    pFrame = avcodec_alloc_frame();
     pFrame = av_frame_alloc();
-    _fps = 25;
+    AVStream *st = pFormatCtx->streams[_videoStream];
+    
+    CGFloat _videoTimeBase;
+    
+    rtspTime(st, 0.04, &_fps, &_videoTimeBase);
+    
+    int nSecond = (int)pFormatCtx->streams[_videoStream]->duration*pFormatCtx->streams[_videoStream]->time_base.num/pFormatCtx->streams[_videoStream]->time_base.den;
+    DLog(@"seconds:%d---%f",nSecond,_fps);
     _isEOF = NO;
     if (_rtspBlock)
     {
@@ -149,7 +208,15 @@
     while (!bFinish)
     {
         nRef = av_read_frame(pFormatCtx, &packet);
-        if(nRef>=0 && packet.stream_index == _videoStream)
+        if (nRef < 0 )
+        {
+            if (is->nExit)
+            {
+                _isEOF = YES;
+                break ;
+            }
+        }
+        if(packet.stream_index == _videoStream)
         {
             int len = avcodec_decode_video2(pCodecCtx,pFrame,&gotframe,&packet);
             if (gotframe)
@@ -169,14 +236,8 @@
             }
             if (0 == len || -1 == len)
             {
-                av_free_packet(&packet);
                 break;
             }
-        }
-        else if(nRef == -1)
-        {
-             _isEOF = YES;
-             break;
         }
         else
         {
@@ -264,9 +325,21 @@
     DLog(@"释放");
     [self closeScaler];
     av_frame_free(&pFrame);
-    avcodec_free_context(&pCodecCtx);
-//    avformat_free_context(pFormatCtx);
-//    avformat_close_input(&pFormatCtx);
+    pFrame = NULL;
+    avcodec_close(pCodecCtx);
+    pCodecCtx = NULL;
+    if(pFormatCtx)
+    {
+        DLog(@"close pFormat");
+        avformat_close_input(&pFormatCtx);
+        pFormatCtx = NULL;
+    }
+    free(is);
+}
+
+-(void)setRtspExit
+{
+    is->nExit = 1;
 }
 
 @end

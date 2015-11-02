@@ -111,7 +111,7 @@
     _downView.hidden = YES;
     __weak RecordViewController *__self = self;
     [self.view makeToastActivity];
-    __weak UIButton *__btnRight = btnRight;
+//    __weak UIButton *__btnRight = btnRight;
     dispatch_async(dispatch_get_global_queue(0, 0),
        ^{
            [RecordDBService removeArray:[dicDelete allValues]];
@@ -138,11 +138,16 @@
     [btnLeft addTarget:self action:@selector(leftClick) forControlEvents:UIControlEventTouchUpInside];
     [self setLeftBtn:btnLeft];
     
-    UIButton *btnRight  = [UIButton buttonWithType:UIButtonTypeCustom];
-    [btnRight setImage:[UIImage imageNamed:@"btn_remove_normal"] forState:UIControlStateHighlighted];
-    [btnRight setImage:[UIImage imageNamed:@"btn_remove_high"] forState:UIControlStateNormal];
-    [btnRight setImage:[UIImage imageNamed:@"OK_ICON"] forState:UIControlStateSelected];
+    btnRight  = [UIButton buttonWithType:UIButtonTypeCustom];
+//    [btnRight setImage:[UIImage imageNamed:@"btn_remove_normal"] forState:UIControlStateHighlighted];
+//    [btnRight setImage:[UIImage imageNamed:@"btn_remove_high"] forState:UIControlStateNormal];
+//    [btnRight setImage:[UIImage imageNamed:@"OK_ICON"] forState:UIControlStateSelected];
+    [btnRight setTitle:@"Edit" forState:UIControlStateNormal];
+    
+    [btnRight setTitle:@"Cancel" forState:UIControlStateSelected];
+    
     [btnRight addTarget:self action:@selector(rightClick) forControlEvents:UIControlEventTouchUpInside];
+    
     [self setRightBtn:btnRight];
     
     _tableView = [[UITableView alloc] initWithFrame:Rect(0, 64, kScreenSourchWidth, kScreenSourchHeight-64)];
@@ -160,8 +165,6 @@
     if (_tableView.editing == YES)
     {
         DLog(@"dicDelete:%@",dicDelete);
-        [RecordDBService removeArray:[dicDelete allValues]];
-        [_arrayRecord removeObjectsInArray:[dicDelete allValues]];
         [_tableView setEditing:NO animated:YES];
         _downView.hidden = YES;
         [_tableView reloadData];
@@ -172,7 +175,9 @@
         btnRight.selected = YES;
         _downView.hidden = NO;
         ((UIButton*)[_downView viewWithTag:1]).selected=NO;
+        
         [_tableView setEditing:YES animated:YES];
+        
         [dicDelete removeAllObjects];
     }
 }

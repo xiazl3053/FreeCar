@@ -11,6 +11,6 @@
 
 @interface DownRecordViewController : CustomViewController
 
--(void)initData;
+-(void)initData:(BOOL)bFlag;
 
 @end

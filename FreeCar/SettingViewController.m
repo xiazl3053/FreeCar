@@ -399,7 +399,8 @@
             strText = [thrAry objectAtIndex:indexPath.row];
             if (indexPath.row == 0)
             {
-                [cell setContent:@"1.0"];
+                
+                [cell setContent:[[[NSBundle mainBundle] infoDictionary] objectForKey:@"CFBundleShortVersionString"]];
             }
             else if(indexPath.row == 1)
             {

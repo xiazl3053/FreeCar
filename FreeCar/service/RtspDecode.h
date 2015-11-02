@@ -12,7 +12,7 @@ typedef void(^RTSPDecodeBlock)(int nStatus);
 
 @interface RtspDecode : NSObject
 
-@property (nonatomic,assign) int fps;
+@property (nonatomic,assign) CGFloat fps;
 
 @property (nonatomic,copy) RTSPDecodeBlock rtspBlock;
 
@@ -23,5 +23,6 @@ typedef void(^RTSPDecodeBlock)(int nStatus);
 -(NSArray *)decodeFrames;
 
 -(BOOL)connectRtsp;
+-(void)setRtspExit;
 
 @end

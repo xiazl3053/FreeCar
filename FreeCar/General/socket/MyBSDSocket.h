@@ -59,4 +59,6 @@ DEFINE_SINGLETON_FOR_HEADER(MyBSDSocket);
 
 - (NSString *)getTimeInfo;
 
+-(BOOL)getStatus;
+
 @end

@@ -129,6 +129,11 @@
 {
     [super viewDidAppear:animated];
     __weak MainViewController *__self = self;
+    
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [__self.view makeToastActivity];
+    });
+    
     dispatch_async(dispatch_get_global_queue(0, 0),
     ^{
        [__self connectRealPlay];
@@ -140,6 +145,10 @@
     _bDecoding = YES;
     if (_aryDecoder.count>0)
     {
+        RtspDecode *rtsp = (RtspDecode *)[_aryDecoder objectAtIndex:0];
+        [rtsp setRtspExit];
+        [NSThread sleepForTimeInterval:0.3];
+        rtsp = nil;
         [_aryDecoder removeObjectAtIndex:0];
     }
     __weak MainViewController *__self = self;
@@ -152,7 +161,6 @@
 -(void)viewWillAppear:(BOOL)animated
 {
     [super viewWillAppear:animated];
-    
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(stopPlay) name:MESSAGE_ENTER_BACK_VC object:nil];
 }
 
@@ -160,8 +168,6 @@
 {
     [super viewWillDisappear:animated];
     [[NSNotificationCenter defaultCenter] removeObserver:self name:MESSAGE_ENTER_BACK_VC object:nil];
-    _bPlaying = NO;
-    _bDecoding = YES;
     __weak MainViewController *__self = self;
     dispatch_async(dispatch_get_global_queue(0, 0),
     ^{
@@ -302,10 +308,15 @@
                 dispatch_async(dispatch_get_global_queue(0, 0), ^{
                     [__self startPlay];
                 });
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    [__self.view hideToastActivity];
+                });
             }
             else
             {
-                dispatch_async(dispatch_get_main_queue(), ^{
+                dispatch_async(dispatch_get_main_queue(),
+                ^{
+                    [__self.view hideToastActivity];
                     [__self.view makeToast:@"connect fail"];
                 });
             }
@@ -315,7 +326,12 @@
     }
     else
     {
-        DLog(@"连接失败");
+        __weak MainViewController *__self = self;
+        dispatch_async(dispatch_get_main_queue(),
+        ^{
+            [__self.view hideToastActivity];
+            [__self.view makeToast:@"connect fail"];
+        });
     }
 }
 

@@ -14,8 +14,8 @@
 #import "RecordModel.h"
 #import "RtspDecode.h"
 
-#define _minBufferedDuration 0.2
-#define _maxBufferedDuration 0.4
+#define _minBufferedDuration 0.01
+#define _maxBufferedDuration 0.02
 
 
 @interface RtspViewController ()
@@ -26,7 +26,6 @@
     UIImageView *downBgView;
     UILabel *_lblName;
     UIButton *_doneButton;
-    RtspDecode *decode;
     int _tickCounter;
     int nAllTime;
     
@@ -42,6 +41,7 @@
     
     UITapGestureRecognizer *tapGesture;
     
+    RtspDecode *_decode;
     int nIndex;
 }
 
@@ -73,7 +73,7 @@
 - (void)viewDidLoad
 {
     [super viewDidLoad];
-    [self.view setBackgroundColor:RGB(0, 0, 0)];
+    [self.view setBackgroundColor:RGB(255,255,255)];
     nIndex = 0;
     [self prefersStatusBarHidden];
     
@@ -129,7 +129,6 @@
 -(void)doneDidTouch
 {
     [self stopPlay];
-    
     [self dismissViewControllerAnimated:YES completion:nil];
 }
 
@@ -152,8 +151,11 @@
 -(void)viewDidAppear:(BOOL)animated
 {
     [super viewDidAppear:animated];
-    _dispatchQueue = dispatch_queue_create("xzlDecoder", DISPATCH_QUEUE_SERIAL);
+    _dispatchQueue = dispatch_queue_create("xzl_decoder", DISPATCH_QUEUE_SERIAL);
     __weak RtspViewController *__self = self;
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [__self.view makeToastActivity];
+    });
     dispatch_async(dispatch_get_global_queue(0, 0),
     ^{
        [__self connectRealPlay];
@@ -206,25 +208,24 @@
 
 -(void)stopPlay
 {
+    [_decode setRtspExit];
     _bPlaying = NO;
     _bDecoding = YES;
     __weak RtspViewController *__self = self;
     dispatch_async(dispatch_get_main_queue(),
-                   ^{
-                       [__self.imgView setImage:nil];
-                   });
-    
+    ^{
+       [__self.imgView setImage:nil];
+    });
     @synchronized(_videoFrames)
     {
         [_videoFrames removeAllObjects];
     }
-    decode = nil;
-    
+    [NSThread sleepForTimeInterval:0.5];
 }
 
 -(void)startPlay
 {
-    if (_buffered && ((_bufferedDuration > _minBufferedDuration) || decode.isEOF))
+    if (_buffered && ((_bufferedDuration > _minBufferedDuration) || _decode.isEOF))
     {
         _tickCorrectionTime = 0;
         _buffered = NO;
@@ -234,13 +235,12 @@
     {
         interval = [self updatePlayUI];
     }
-    
     if(_bPlaying)
     {
         const NSUInteger leftFrames = _videoFrames.count;
         if (0 == leftFrames)
         {
-            if (decode.isEOF)
+            if (_decode.isEOF)
             {
                 __weak RtspViewController *__self = self;
                 dispatch_async(dispatch_get_main_queue(), ^{
@@ -269,7 +269,6 @@
            [__weakSelf startPlay];
        });
     }
-
 }
 
 
@@ -307,7 +306,7 @@
         return ;
     }
     _bDecoding = YES;
-    __weak RtspDecode *__decoder = decode;
+    __weak RtspDecode *__decoder = _decode;
     __weak RtspViewController *__weakSelf = self;
     dispatch_async(_dispatchQueue,
    ^{
@@ -352,7 +351,6 @@
     }
     if (frame)
     {
-        DLog(@"贴图:%d",nIndex++);
         KxVideoFrameRGB *rgbFrame = (KxVideoFrameRGB *)frame;
         UIImage *image = [rgbFrame asImage];
         __weak UIImage *__image = image;
@@ -386,6 +384,15 @@
 -(void)dealloc
 {
     DLog(@"释放PlayView");
+    _videoFrames = nil;
+    _btnPlay = nil;
+    _btnRewind = nil;
+    _imgView = nil;
+    _model = nil;
+//    if (_decode)
+//    {
+//        _decode = nil;
+//    }
 }
 
 -(void)connectRealPlay
@@ -400,9 +407,9 @@
         strInfo = [NSString stringWithFormat:@"rtsp://192.168.42.1/tmp/fuse_d/EVENT/%@",strName];
     }
     DLog(@"RTSP:%@",strInfo);
-    decode = [[RtspDecode alloc] initWithRtsp:strInfo];
+    _decode = [[RtspDecode alloc] initWithRtsp:strInfo];
     __weak RtspViewController *__self = self;
-    decode.rtspBlock = ^(int nStatus)
+    _decode.rtspBlock = ^(int nStatus)
     {
         if (nStatus==1)
         {
@@ -410,16 +417,21 @@
                 __self.bPlaying= YES;
                 __self.bDecoding = NO;
                 [__self startPlay];
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    [__self.view hideToastActivity];
+                });
             });
         }
         else
         {
-            dispatch_async(dispatch_get_main_queue(), ^{
+            dispatch_async(dispatch_get_main_queue(),
+            ^{
+                [__self.view hideToastActivity];
                 [__self.view makeToast:@"connect fail"];
             });
         }
     };
-    [decode connectRtsp];
+    [_decode connectRtsp];
  
 }
 

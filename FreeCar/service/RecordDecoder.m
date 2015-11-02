@@ -67,8 +67,9 @@ static void avStreamFPSTimeBase(AVStream *st, CGFloat defaultTimeBase, CGFloat *
 {
     [self closeScaler];
     
-    avcodec_free_frame(&pFrame);
     
+    av_frame_free(&pFrame);
+//    avcodec_free_frame(&pFrame);
     avcodec_close(pCodecCtx);
     
     avformat_free_context(pFormatCtx);
@@ -164,6 +165,7 @@ static void avStreamFPSTimeBase(AVStream *st, CGFloat defaultTimeBase, CGFloat *
         return NO;
     }
     pFrame = av_frame_alloc();
+//    pFrame = avcodec_alloc_frame();
     
     AVStream *st = pFormatCtx->streams[_videoStream];
     

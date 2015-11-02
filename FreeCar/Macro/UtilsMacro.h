@@ -9,11 +9,6 @@
 #ifndef XCMonit_Ip_UtilsMacro_h
 #define XCMonit_Ip_UtilsMacro_h
 
-#define UIColorFromRGB(r,g,b) [UIColor \
-colorWithRed:r/255.0 \
-green:g/255.0 \
-blue:b/255.0 alpha:1]
-
 #define UIColorFromRGBA(r,g,b,a) [UIColor \
 colorWithRed:r/255.0 \
 green:g/255.0 \

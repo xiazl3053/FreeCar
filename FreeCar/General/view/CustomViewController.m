@@ -59,6 +59,7 @@
 {
     _btnRight = btnRight;
     _btnRight.frame = Rect(_headView.width-44, 20, 44, 44);
+    _btnRight.titleLabel.font = XCFONT(12);
     [_headView addSubview:_btnRight];
 }
 

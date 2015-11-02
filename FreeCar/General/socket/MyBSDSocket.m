@@ -734,6 +734,13 @@ DEFINE_SINGLETON_FOR_CLASS(MyBSDSocket);
     return nil;
 }
 
+-(BOOL)getStatus
+{
+    if (nSockfd) {
+        return  YES;
+    }
+    return NO;
+}
 @end
 
 
